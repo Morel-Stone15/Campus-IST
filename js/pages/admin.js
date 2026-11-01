@@ -213,27 +213,230 @@
     </div>`;
   }
 
-    function utilisateurs(ctx) {
+  function generateStaffCode(role) {
+    const pfxMap = {
+      admin: 'ADM',
+      communication: 'COM',
+      chef: 'CHF',
+      enseignant: 'ENS',
+      staff: 'STF',
+    };
+    const pfx = pfxMap[role] || 'STF';
+    const num = Math.floor(1000 + Math.random() * 9000);
+    return `IST-${pfx}-${num}`;
+  }
+
+  function showAccessSlip(user, plainPassword) {
+    const s = ui.sheet({
+      title: 'Fiche d’accès du personnel',
+      body: `<div class="stack-lg">
+        <div class="info-box tone-green">${icon('checkCircle')}<div><b>Membre du personnel inscrit avec succès !</b>Transmettez-lui ces identifiants pour qu'il puisse se connecter à son espace dédié.</div></div>
+        <div class="card" style="background:var(--surface-variant,#f8fafc);padding:18px;border-radius:12px;border:1px solid var(--border,#cbd5e1);">
+          <div style="margin-bottom:12px;"><strong>${ui.esc(ui.displayName(user))}</strong><span class="badge tone-blue" style="margin-left:8px;">${ui.esc(user.fonction || ui.roleLabel(user))}</span></div>
+          <div class="stack" style="gap:8px;font-size:14px;">
+            <div><small class="muted" style="display:block;">Adresse email :</small><code>${ui.esc(user.email)}</code></div>
+            <div><small class="muted" style="display:block;">Code d'accès personnel :</small><strong style="font-size:16px;color:var(--primary,#0A4EA3);letter-spacing:1px;"><code>${ui.esc(user.staffCode)}</code></strong></div>
+            <div><small class="muted" style="display:block;">Mot de passe temporaire :</small><code>${ui.esc(plainPassword || 'Déjà défini')}</code></div>
+            <div><small class="muted" style="display:block;">Espace de travail attribué :</small><b>${ui.esc(ui.roleLabel(user))} (${ui.esc(user.fonction || 'Membre du personnel')})</b></div>
+          </div>
+        </div>
+        <p class="muted small">Le collaborateur peut se connecter sur Campus+ soit avec son adresse email, soit directement avec son <strong>Code d'accès personnel</strong>.</p>
+      </div>`,
+      footer: `<button class="btn btn-primary btn-block" data-copy-slip>${icon('copy')}Copier la fiche complète</button>`,
+    });
+
+    s.el.querySelector('[data-copy-slip]').addEventListener('click', () => {
+      const text = `=== CAMPUS+ IST · IDENTIFIANTS DU PERSONNEL ===\n` +
+        `Nom : ${ui.displayName(user)}\n` +
+        `Poste : ${user.fonction || ui.roleLabel(user)}\n` +
+        `Email : ${user.email}\n` +
+        `Code d'accès personnel : ${user.staffCode}\n` +
+        `Mot de passe : ${plainPassword || '(personnel)'}\n` +
+        `Accès direct : https://morel-stone15.github.io/Campus-IST/#/login\n` +
+        `================================================`;
+      navigator.clipboard.writeText(text).then(() => {
+        ui.toast('Identifiants copiés dans le presse-papier !', 'success');
+      }).catch(() => {
+        ui.toast('Texte prêt à être copié.', 'info');
+      });
+    });
+  }
+
+  function registerStaffModal(ctx) {
+    const roles = [
+      ['enseignant', 'Enseignant / Professeur'],
+      ['communication', 'Service Communication (Événements & Annonces)'],
+      ['chef', 'Chef de filière'],
+      ['admin', 'Administration générale / Direction'],
+      ['staff', 'Personnel administratif & technique'],
+    ];
+    const initialRole = 'enseignant';
+    const initialCode = generateStaffCode(initialRole);
+    const initialPw = `IstPass${Math.floor(100 + Math.random() * 900)}!`;
+
+    const s = ui.sheet({
+      title: 'Inscrire un membre du personnel',
+      body: `<form class="admin-form stack-lg" id="staff-reg-form" novalidate>
+        <div class="form-row">
+          ${ui.field({ name: 'civilite', label: 'Civilité', type: 'select', options: ['M.', 'Mme', 'Dr', 'Pr'], value: 'M.' })}
+          ${ui.field({ name: 'role', label: 'Rôle & Espace dédié', type: 'select', options: roles, value: initialRole })}
+        </div>
+        <div class="form-row">
+          ${ui.field({ name: 'prenom', label: 'Prénom', placeholder: 'Ex. Alexandre', required: true })}
+          ${ui.field({ name: 'nom', label: 'Nom', placeholder: 'Ex. MOUSSAVOU', required: true })}
+        </div>
+        ${ui.field({ name: 'email', label: 'Adresse email professionnelle', type: 'email', placeholder: 'a.moussavou@ist.ga', required: true })}
+        ${ui.field({ name: 'fonction', label: 'Poste ou Fonction exacte', placeholder: 'Ex. Enseignant en Réseaux, Responsable Communication, Directeur des Études...', required: true })}
+        
+        <div class="form-row" id="staff-chef-wrap" hidden>
+          ${ui.field({ name: 'chefFiliere', label: 'Filière sous sa responsabilité', type: 'select', options: IST.school.filiereOptions() })}
+        </div>
+
+        <div style="background:var(--surface-variant,#f8fafc);padding:14px;border-radius:12px;border:1px solid var(--border,#cbd5e1);">
+          <strong style="font-size:13px;display:block;margin-bottom:8px;">Identifiants d'accès attribués :</strong>
+          <div class="form-row">
+            ${ui.field({ name: 'staffCode', label: "Code d'accès personnel", value: initialCode, required: true, hint: 'Code unique permettant la connexion directe du membre' })}
+            ${ui.field({ name: 'password', label: 'Mot de passe temporaire', value: initialPw, required: true, hint: 'Pourra être modifié par le collaborateur' })}
+          </div>
+        </div>
+      </form>`,
+      footer: `<button class="btn btn-ghost" data-close>Annuler</button><button class="btn btn-primary" type="submit" form="staff-reg-form">${icon('user')}Créer le compte et le code d'accès</button>`,
+    });
+
+    const f = s.el.querySelector('#staff-reg-form');
+    const roleSelect = f.querySelector('select[name=role]');
+    const chefWrap = f.querySelector('#staff-chef-wrap');
+    const codeInput = f.querySelector('input[name=staffCode]');
+
+    roleSelect.addEventListener('change', () => {
+      const r = roleSelect.value;
+      chefWrap.hidden = r !== 'chef';
+      codeInput.value = generateStaffCode(r);
+    });
+
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const d = ui.formData(f);
+      ui.setErr(f, 'prenom', d.prenom.trim() ? '' : 'Indiquez le prénom.');
+      ui.setErr(f, 'nom', d.nom.trim() ? '' : 'Indiquez le nom.');
+      ui.setErr(f, 'email', d.email.trim() ? '' : 'Indiquez l\'adresse email.');
+      ui.setErr(f, 'fonction', d.fonction.trim() ? '' : 'Indiquez la fonction ou le poste.');
+      ui.setErr(f, 'staffCode', d.staffCode.trim() ? '' : 'Le code d\'accès est requis.');
+      if (!d.prenom.trim() || !d.nom.trim() || !d.email.trim() || !d.fonction.trim() || !d.staffCode.trim()) return;
+
+      const email = d.email.trim().toLowerCase();
+      const existing = auth.findByEmail(email);
+      if (existing) return ui.setErr(f, 'email', 'Un utilisateur existe déjà avec cet email.');
+
+      const codeUpper = d.staffCode.trim().toUpperCase();
+      const existingCode = auth.findByStaffCode(codeUpper);
+      if (existingCode) return ui.setErr(f, 'staffCode', 'Ce code d\'accès est déjà attribué à un autre membre.');
+
+      const btn = s.el.querySelector('button[type=submit]');
+      ui.busy(btn, true);
+
+      const plainPassword = d.password.trim() || initialPw;
+
+      const newUser = {
+        id: db.uid(),
+        civilite: d.civilite || 'M.',
+        prenom: d.prenom.trim(),
+        nom: d.nom.trim(),
+        email,
+        role: d.role || 'staff',
+        fonction: d.fonction.trim(),
+        staffCode: codeUpper,
+        chefFiliere: d.role === 'chef' ? d.chefFiliere : '',
+        classes: [],
+        filiere: '',
+        niveau: '',
+        phone: '',
+        password: await IST.hash(email + '|' + plainPassword),
+        createdAt: new Date().toISOString(),
+        readNotifs: [],
+        events: [],
+        prefs: { notifs: { cours: true, annonce: true, evenement: true, system: true } },
+      };
+
+      // Si l'API est connectée, inscrire également dans la base de données backend
+      if (window.IST.api && window.IST.api.auth && location.protocol !== 'file:') {
+        try {
+          const apiRoleMap = {
+            admin: 'admin',
+            communication: 'staff',
+            chef: 'teacher',
+            enseignant: 'teacher',
+            staff: 'staff',
+          };
+          await window.IST.api.auth.register({
+            email,
+            username: email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || `staff_${Date.now()}`,
+            password: plainPassword,
+            first_name: newUser.prenom,
+            last_name: newUser.nom,
+            role: apiRoleMap[newUser.role] || 'staff',
+            employee_number: codeUpper,
+            specialty: newUser.fonction,
+          });
+        } catch (apiErr) {
+          console.warn('API staff registration note:', apiErr);
+        }
+      }
+
+      const allUsers = auth.users();
+      allUsers.push(newUser);
+      auth.saveUsers(allUsers);
+
+      ui.busy(btn, false);
+      s.close();
+
+      ui.toast(`Membre du personnel ${newUser.prenom} ${newUser.nom} inscrit !`, 'success');
+      ctx.refresh();
+
+      setTimeout(() => {
+        showAccessSlip(newUser, plainPassword);
+      }, 350);
+    });
+  }
+
+  function utilisateurs(ctx) {
     const filter = st.roleFilter || 'all';
     const us = auth.users().filter((u) => filter === 'all' || u.role === filter).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     const roles = Object.entries(cfg.roles);
     const detail = (u) => (u.role === 'etudiant'
       ? `${ui.esc(u.filiere || '—')} · ${ui.esc(u.niveau || '—')}`
       : [u.chefFiliere ? 'Chef ' + ui.esc((IST.school.find(u.chefFiliere) || {}).code || '') : '', (u.classes || []).join(', '), ui.esc(u.fonction || '')].filter(Boolean).join(' · ') || '—');
+
     return `
+      <div class="row-between mb" style="flex-wrap:wrap;gap:12px;background:var(--surface,#fff);padding:14px 18px;border-radius:14px;border:1px solid var(--border,#e2e8f0);">
+        <div>
+          <h3 style="margin:0 0 4px 0;">Membres du personnel & Utilisateurs</h3>
+          <p class="muted small" style="margin:0;">Inscrivez les collaborateurs, attribuez-leur un rôle/poste et générez leur code d'accès personnel.</p>
+        </div>
+        <button class="btn btn-primary" data-add-staff>${icon('plus')}Inscrire un membre du personnel</button>
+      </div>
+
       <div class="chips" style="margin-bottom:14px">${[['all', 'Tous'], ...roles].map(([v, l]) => `<button type="button" class="chip ${v === filter ? 'active' : ''}" data-role-filter="${v}">${l} (${v === 'all' ? auth.users().length : auth.users().filter((u) => u.role === v).length})</button>`).join('')}</div>
       <div class="table-wrap"><table>
-      <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Filière / classes</th><th>Inscription</th><th></th></tr></thead>
+      <thead><tr><th>Nom</th><th>Email</th><th>Poste / Rôle</th><th>Code d'accès personnel</th><th>Filière / classes</th><th>Date</th><th></th></tr></thead>
       <tbody>${us.map((u) => `<tr>
         <td><div class="row">${ui.avatar(u, 30)}${ui.esc(ui.displayName(u))}</div></td>
         <td>${ui.esc(u.email)}</td>
-        <td><select class="mini-select" data-set-role="${u.id}" ${u.id === ctx.user.id ? 'disabled' : ''} aria-label="Rôle de ${ui.esc(u.prenom)}">${roles.map(([v, l]) => `<option value="${v}" ${v === u.role ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
-        <td style="white-space:normal;max-width:280px">${detail(u)}</td>
+        <td>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;">${ui.esc(u.fonction || ui.roleLabel(u))}</div>
+          <select class="mini-select" data-set-role="${u.id}" ${u.id === ctx.user.id ? 'disabled' : ''} aria-label="Rôle de ${ui.esc(u.prenom)}">${roles.map(([v, l]) => `<option value="${v}" ${v === u.role ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        </td>
+        <td>
+          ${u.staffCode ? `<span style="display:inline-flex;align-items:center;gap:6px;"><code style="font-size:12px;font-weight:700;color:var(--primary,#0A4EA3);background:#eff6ff;padding:3px 8px;border-radius:6px;border:1px solid #bfdbfe;">${ui.esc(u.staffCode)}</code><button class="icon-btn sm" data-copy-text="${ui.esc(u.staffCode)}" title="Copier le code d'accès">${icon('copy')}</button></span>`
+            : (u.role !== 'etudiant' ? `<button class="btn btn-soft btn-xs" data-gen-code="${u.id}">${icon('key')}Créer code</button>` : '<small class="muted">Étudiant</small>')}
+        </td>
+        <td style="white-space:normal;max-width:240px">${detail(u)}</td>
         <td>${D.fmt(u.createdAt, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-        <td>${u.id === ctx.user.id ? '' : `<button class="icon-btn" data-del-user="${u.id}" aria-label="Supprimer le compte">${icon('trash')}</button>`}</td></tr>`).join('')}</tbody>
+        <td>${u.id === ctx.user.id ? '' : `<button class="icon-btn" data-del-user="${u.id}" aria-label="Supprimer le compte" title="Supprimer">${icon('trash')}</button>`}</td></tr>`).join('')}</tbody>
     </table></div>
-    <p class="muted small mt">Les membres du personnel créent leur compte avec le code d'accès du personnel. Tu peux corriger leur rôle ici.</p>`;
+    <p class="muted small mt">Les membres du personnel peuvent se connecter avec leur adresse email OU directement avec leur code d'accès personnel.</p>`;
   }
+
 
     /* ---------- Enregistrement des formulaires ---------- */
   function required(f, d, names) {
@@ -314,11 +517,34 @@
     },
     mount(el, ctx) {
       el.addEventListener('click', async (e) => {
-        const t = e.target.closest('[data-tab], [data-del], [data-edit-doc], [data-role-filter], [data-del-user], [data-del-hymn]');
+        const t = e.target.closest('[data-tab], [data-del], [data-edit-doc], [data-role-filter], [data-del-user], [data-del-hymn], [data-add-staff], [data-copy-text], [data-gen-code]');
         if (!t) return;
         if (t.dataset.tab) { st.tab = t.dataset.tab; return ctx.refresh(); }
         if (t.dataset.editDoc) return editDoc(t.dataset.editDoc, ctx);
         if (t.dataset.roleFilter) { st.roleFilter = t.dataset.roleFilter; return ctx.refresh(); }
+        if (t.dataset.addStaff !== undefined || t.hasAttribute('data-add-staff')) {
+          return registerStaffModal(ctx);
+        }
+        if (t.dataset.copyText) {
+          try {
+            await navigator.clipboard.writeText(t.dataset.copyText);
+            ui.toast('Code copié : ' + t.dataset.copyText, 'success');
+          } catch (_) {
+            prompt("Code d'accès :", t.dataset.copyText);
+          }
+          return;
+        }
+        if (t.dataset.genCode) {
+          const u = auth.users().find((x) => x.id === t.dataset.genCode);
+          if (u) {
+            const prefix = u.role === 'admin' ? 'IST-ADM' : u.role === 'communication' ? 'IST-COM' : u.role === 'enseignant' ? 'IST-ENS' : 'IST-STF';
+            const rnd = Math.floor(1000 + Math.random() * 9000);
+            u.staffCode = `${prefix}-${rnd}`;
+            auth.saveUsers(auth.users());
+            ui.toast(`Code généré pour ${u.prenom} : ${u.staffCode}`, 'success');
+            return ctx.refresh();
+          }
+        }
         if (t.dataset.delUser) {
           const u = auth.users().find((x) => x.id === t.dataset.delUser);
           if (!u || !(await ui.confirm(`Supprimer le compte de ${ui.displayName(u)} ?`, { ok: 'Supprimer', danger: true }))) return;

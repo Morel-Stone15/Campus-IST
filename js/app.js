@@ -1,22 +1,80 @@
 /* ==========================================================
-   Routeur et structure de l'application
+   Routeur et structure de l'application + Notifications PWA
    ========================================================== */
 (function () {
   const { ui, auth, db, config: cfg, date: D } = IST;
   const icon = IST.icon;
   const app = document.getElementById('app');
 
-  const teaches = (u) => (u.classes || []).length > 0;
+  // ── Système de notifications PWA / Web APK (Mobile) ──────────────────────
+  IST.pwaNotification = {
+    isSupported() {
+      return ('Notification' in window) && ('serviceWorker' in navigator);
+    },
+    permission() {
+      return ('Notification' in window) ? Notification.permission : 'denied';
+    },
+    async requestPermission() {
+      if (!('Notification' in window)) {
+        ui.toast("Les notifications ne sont pas supportées par ce navigateur.", 'info');
+        return 'denied';
+      }
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          ui.toast('🔔 Notifications autorisées sur votre téléphone !', 'success');
+          setTimeout(() => {
+            IST.pwaNotification.send(
+              'Campus+ IST',
+              'Notifications mobiles activées. Vous serez alerté des nouveaux cours et annonces en temps réel.',
+              'home'
+            );
+          }, 500);
+        } else {
+          ui.toast('Notifications non autorisées.', 'info');
+        }
+        return perm;
+      } catch (err) {
+        return 'denied';
+      }
+    },
+    async send(title, body, link = 'notifications') {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        if ('vibrate' in navigator) navigator.vibrate([150, 75, 150]);
+        const targetUrl = link ? (link.startsWith('#') ? link : `#/${link}`) : '#/notifications';
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg && reg.showNotification) {
+            reg.showNotification(title, {
+              body,
+              icon: 'assets/icon.svg',
+              badge: 'assets/icon.svg',
+              vibrate: [200, 100, 200, 100, 200],
+              tag: 'campus-ist-' + Date.now(),
+              data: { url: targetUrl },
+            });
+            return;
+          }
+        }
+        new Notification(title, { body, icon: 'assets/icon.svg' });
+      } catch (e) {
+        console.warn('Native notification error:', e);
+      }
+    }
+  };
+
+  const teaches = (u) => Boolean(u && (u.role === 'enseignant' || (u.classes || []).length > 0));
   const NAV = [
     { id: 'home', label: 'Accueil', icon: 'home' },
     { id: 'classe', label: 'Ma classe', icon: 'users', show: (u) => u.role === 'etudiant' },
-    { id: 'classes', label: 'Mes classes', icon: 'users', show: teaches },
+    { id: 'classes', label: 'Mes classes & Cours', icon: 'users', show: teaches },
     { id: 'filiere', label: 'Espace chef de filière', icon: 'layers', show: (u) => u.role === 'chef' },
     { id: 'academique', label: 'Vie académique', icon: 'book' },
-    { id: 'annuaire', label: 'Personnel de l’IST', icon: 'briefcase' },
+    { id: 'documents', label: 'Documents & Cours', icon: 'file' },
     { id: 'agenda', label: 'Agenda étudiant', icon: 'calendar' },
-    { id: 'actualites', label: 'Actualités', icon: 'newspaper' },
-    { id: 'documents', label: 'Documents officiels', icon: 'file' },
+    { id: 'actualites', label: 'Actualités & Annonces', icon: 'newspaper' },
+    { id: 'annuaire', label: 'Personnel de l’IST', icon: 'briefcase' },
     { id: 'services', label: 'Services du campus', icon: 'pin' },
     { id: 'plan', label: "Plan de l'université", icon: 'map' },
     { id: 'identite', label: "Identité de l'IST", icon: 'music' },
@@ -25,14 +83,18 @@
     { id: 'notifications', label: 'Notifications', icon: 'bell' },
     { id: 'profil', label: 'Mon profil', icon: 'user' },
   ];
+
   function bottomItems(u) {
-    const second = u.role === 'etudiant'
-      ? { id: 'classe', label: 'Ma classe', icon: 'users' }
-      : teaches(u) ? { id: 'classes', label: 'Classes', icon: 'users' } : { id: 'admin', label: 'Admin', icon: 'shield' };
+    let second = { id: 'classe', label: 'Ma classe', icon: 'users' };
+    if (u.role === 'admin') second = { id: 'admin', label: 'Admin', icon: 'shield' };
+    else if (u.role === 'communication') second = { id: 'actualites', label: 'Com', icon: 'newspaper' };
+    else if (u.role === 'chef') second = { id: 'filiere', label: 'Filière', icon: 'layers' };
+    else if (teaches(u) || u.role === 'enseignant') second = { id: 'classes', label: 'Classes', icon: 'users' };
+
     return [
       { id: 'home', label: 'Accueil', icon: 'home' },
       second,
-      { id: 'academique', label: 'Cours', icon: 'book' },
+      { id: 'documents', label: 'Cours', icon: 'file' },
       { id: 'actualites', label: 'Actualités', icon: 'newspaper' },
       { id: 'profil', label: 'Profil', icon: 'user' },
     ];
@@ -57,6 +119,24 @@
     const admin = user.role === 'admin' ? [{ id: 'admin', label: 'Administration', icon: 'shield' }] : [];
     const sub = isHome ? D.long(new Date()) : (typeof page.subtitle === 'function' ? page.subtitle(user) : page.subtitle) || cfg.schoolName;
     const title = typeof page.title === 'function' ? page.title(user) : page.title;
+
+    // Bandeau d'autorisation des notifications sur smartphone / Web APK
+    const showNotifPrompt = IST.pwaNotification.isSupported() &&
+      IST.pwaNotification.permission() === 'default' &&
+      !sessionStorage.getItem('istc_notif_dismissed');
+
+    const notifPromptHTML = showNotifPrompt
+      ? `<div id="pwa-notif-banner" style="background:linear-gradient(135deg, #0A4EA3, #0284c7);color:#fff;padding:12px 16px;margin:12px 16px;border-radius:14px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(10,78,163,0.25);">
+          <span style="font-size:24px;display:flex;align-items:center;">🔔</span>
+          <div style="flex:1;min-width:0;">
+            <strong style="font-size:14px;display:block;">Activer les alertes sur votre téléphone</strong>
+            <small style="opacity:0.92;font-size:12px;line-height:1.25;display:block;">Recevez les notifications d'emploi du temps, cours et urgences en temps réel.</small>
+          </div>
+          <button class="btn btn-sm" id="btn-allow-pwa-notif" style="background:#fff;color:#0A4EA3;font-weight:700;white-space:nowrap;padding:8px 14px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.15);">Autoriser</button>
+          <button class="icon-btn" id="btn-dismiss-pwa-notif" style="color:#fff;opacity:0.8;padding:4px;" aria-label="Fermer">${icon('x')}</button>
+        </div>`
+      : '';
+
     return `
       <aside class="sidebar" id="sidebar" aria-label="Menu principal">
         <div class="brand">${ui.logoMark(42)}<div><strong>Campus+</strong><small>${cfg.schoolShort} · ${cfg.motto}</small></div>
@@ -87,6 +167,7 @@
             <a href="#/profil" class="avatar-link desktop-only" aria-label="Mon profil">${ui.avatar(user, 38)}</a>
           </div>
         </header>
+        ${notifPromptHTML}
         <main class="content" id="content" tabindex="-1"></main>
       </div>
       <nav class="bottomnav" aria-label="Navigation rapide">
@@ -118,27 +199,29 @@
     if (!page || (page.admin && user.role !== 'admin') || (page.can && !page.can(user))) return go('home');
 
     app.innerHTML = shellHTML(page, name, user);
+    const content = document.getElementById('content');
+    content.innerHTML = page.render({ user, params });
+    page.mount && page.mount(content, { user, params, refresh: render });
     document.title = `${typeof page.title === 'function' ? page.title(user) : page.title} · Campus+`;
-    let content = document.getElementById('content');
-    const ctx = {
-      user, params,
-      refresh() {
-        ctx.user = auth.current();
-        // Nouvel élément à chaque rendu : les anciens écouteurs disparaissent avec l'ancien.
-        const fresh = content.cloneNode(false);
-        content.replaceWith(fresh);
-        content = fresh;
-        content.innerHTML = page.render(ctx);
-        page.mount && page.mount(content, ctx);
-      },
-      refreshShell: render,
-    };
-    ctx.refresh();
     window.scrollTo(0, 0);
   }
 
-  /* ---------- Actions globales ---------- */
+  /* ---------- Événements globaux ---------- */
   document.addEventListener('click', async (e) => {
+    // Boutons de la bannière d'autorisation des notifications
+    if (e.target.closest('#btn-allow-pwa-notif')) {
+      const banner = document.getElementById('pwa-notif-banner');
+      if (banner) banner.remove();
+      await IST.pwaNotification.requestPermission();
+      return;
+    }
+    if (e.target.closest('#btn-dismiss-pwa-notif')) {
+      sessionStorage.setItem('istc_notif_dismissed', '1');
+      const banner = document.getElementById('pwa-notif-banner');
+      if (banner) banner.remove();
+      return;
+    }
+
     const t = e.target.closest('[data-drawer], [data-back], [data-logout], [data-pw-toggle]');
     if (!t) return;
     if (t.dataset.drawer) {
@@ -159,9 +242,11 @@
       t.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
     }
   });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') document.body.classList.remove('drawer-open');
   });
+
   window.addEventListener('hashchange', async () => {
     const user = auth.current();
     if (user && IST.api && IST.api.getToken()) {

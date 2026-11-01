@@ -1,5 +1,5 @@
-/* Service worker : met l'application en cache pour l'utiliser hors connexion. */
-const CACHE = 'campus-plus-v5';
+/* Service worker : met l'application en cache pour l'utiliser hors connexion + notifications push PWA / Web APK */
+const CACHE = 'campus-plus-v6';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css', 'assets/icon.svg',
   'js/config.js', 'js/icons.js', 'js/ui.js', 'js/data.js', 'js/api.js', 'js/store.js', 'js/app.js',
@@ -34,5 +34,41 @@ self.addEventListener('fetch', (e) => {
         return res;
       })
       .catch(() => caches.match(e.request))
+  );
+});
+
+// ── Notifications Push & Système PWA / Web APK ───────────────────────────────
+self.addEventListener('push', (e) => {
+  let data = { title: 'Campus+ IST', body: 'Nouvelle alerte du campus.', url: './' };
+  try {
+    if (e.data) data = e.data.json();
+  } catch (err) {
+    if (e.data) data.body = e.data.text();
+  }
+  const options = {
+    body: data.body,
+    icon: 'assets/icon.svg',
+    badge: 'assets/icon.svg',
+    vibrate: [200, 100, 200, 100, 200],
+    tag: 'campus-ist-notif',
+    renotify: true,
+    data: { url: data.url || './' },
+  };
+  e.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const urlToOpen = (e.notification.data && e.notification.data.url) ? e.notification.data.url : './';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url && 'focus' in client) {
+          if ('navigate' in client) client.navigate(urlToOpen);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
+    })
   );
 });

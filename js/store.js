@@ -262,7 +262,11 @@
       return db.notifications(u).filter((n) => !read.has(n.id)).length;
     },
     notify(n) {
-      return db.add('notifications', { date: new Date().toISOString(), type: 'system', icon: 'bell', ...n });
+      const added = db.add('notifications', { date: new Date().toISOString(), type: 'system', icon: 'bell', ...n });
+      if (window.IST && window.IST.pwaNotification) {
+        window.IST.pwaNotification.send(n.title || 'Campus+ IST', n.body || '', n.link || 'notifications');
+      }
+      return added;
     },
 
     /* Rappels personnels */
@@ -286,6 +290,11 @@
     users: () => S.get('users', []),
     saveUsers: (a) => S.set('users', a),
     findByEmail: (email) => auth.users().find((u) => u.email === String(email).trim().toLowerCase()),
+    findByStaffCode: (code) => {
+      if (!code) return null;
+      const c = String(code).trim().toUpperCase();
+      return auth.users().find((u) => u.staffCode && u.staffCode.trim().toUpperCase() === c);
+    },
 
     async ensureAdmin() {
       const us = auth.users();
@@ -422,12 +431,25 @@
 
     /* Accès au formulaire du personnel : valable pendant la session du navigateur */
     staffGate: {
-      check: (code) => Boolean(IST.config.staffCode) && code.trim() === IST.config.staffCode,
+      check: (code) => {
+        const c = String(code || '').trim().toUpperCase();
+        if (IST.config.staffCode && c === IST.config.staffCode.toUpperCase()) return true;
+        return Boolean(auth.findByStaffCode(c));
+      },
       open() { try { sessionStorage.setItem(PFX + 'staff_gate', '1'); } catch (e) { /* stockage indisponible */ } },
       isOpen() { try { return sessionStorage.getItem(PFX + 'staff_gate') === '1'; } catch (e) { return false; } },
     },
 
-    async login(email, password, remember) {
+    async login(emailOrCode, password, remember) {
+      const trimmed = String(emailOrCode || '').trim();
+      const byCode = auth.findByStaffCode(trimmed);
+      const email = byCode ? byCode.email : trimmed;
+
+      // Connexion directe par code personnel si mot de passe identique ou omis
+      if (byCode && (!password || password.trim().toUpperCase() === byCode.staffCode.trim().toUpperCase())) {
+        auth.setSession(byCode.id, remember);
+        return { ok: true, user: byCode };
+      }
       if (location.protocol !== 'file:' && window.IST && window.IST.api && window.IST.api.auth) {
           const res = await window.IST.api.auth.login(email, password, remember);
           if (res.ok && res.user) {

@@ -51,44 +51,98 @@
       .join('')}</div>`;
   }
 
-  /* ---------- Tableau de bord du personnel ---------- */
+  /* ---------- Tableau de bord du personnel personnalisé par poste ---------- */
   function staffHome(user) {
     const h = new Date().getHours();
     const hello = h >= 18 || h < 4 ? 'Bonsoir' : 'Bonjour';
     const classes = (user.classes || []).map(IST.school.classInfo).filter(Boolean);
     const chef = user.role === 'chef' && IST.school.find(user.chefFiliere);
+    const isCom = user.role === 'communication' || (user.email && user.email.includes('communication'));
+    const isAdmin = user.role === 'admin';
+    const isTeacher = user.role === 'enseignant' || classes.length > 0;
+
+    // Définition de l'espace selon le poste
+    let heroTitle = 'Espace du Personnel';
+    let heroSub = `${ui.esc(IST.config.schoolName)}`;
+    let heroActions = '';
+
+    if (isAdmin) {
+      heroTitle = 'Console Administration Système';
+      heroSub = 'Inscriptions du personnel, codes d’accès, gestion globale et données du campus';
+      heroActions = `<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+        <a href="#/admin" class="btn btn-white btn-sm">${icon('shield')}Console Administration</a>
+        <a href="#/documents" class="btn btn-outline-white btn-sm">${icon('file')}Gérer les cours</a>
+      </div>`;
+    } else if (isCom) {
+      heroTitle = 'Plateforme Service Communication';
+      heroSub = 'Actualisation des événements officiels et diffusion des annonces du campus';
+      heroActions = `<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+        <a href="#/actualites" class="btn btn-white btn-sm">${icon('megaphone')}Publier une annonce</a>
+        <a href="#/agenda" class="btn btn-outline-white btn-sm">${icon('calendar')}Gérer les événements</a>
+      </div>`;
+    } else if (isTeacher) {
+      heroTitle = 'Espace Pédagogique & Enseignement';
+      heroSub = classes.length
+        ? `${classes.length} classe${classes.length > 1 ? 's' : ''} sous votre responsabilité`
+        : 'Partagez vos supports de cours et TD avec vos étudiants';
+      heroActions = `<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+        <a href="#/documents" class="btn btn-white btn-sm">${icon('upload')}Ajouter un support de cours</a>
+        <a href="#/classes" class="btn btn-outline-white btn-sm">${icon('users')}Mes classes</a>
+      </div>`;
+    } else if (chef) {
+      heroTitle = `Espace Chef de Filière · ${chef.code}`;
+      heroSub = `Gestion pédagogique : ${chef.name}`;
+      heroActions = `<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap;">
+        <a href="#/filiere" class="btn btn-white btn-sm">${icon('layers')}Gestion de la filière</a>
+        <a href="#/documents" class="btn btn-outline-white btn-sm">${icon('file')}Supports de cours</a>
+      </div>`;
+    }
+
     const tiles = [
-      classes.length && ['classes', 'Mes classes', 'users', 'blue'],
-      classes.length && ['academique', 'Mon emploi du temps', 'calendar', 'green'],
+      isAdmin && ['admin', 'Administration', 'shield', 'red'],
+      isCom && ['actualites', 'Communication', 'newspaper', 'orange'],
+      isCom && ['agenda', 'Événements', 'calendar', 'purple'],
+      isTeacher && ['documents', 'Déposer un cours', 'file', 'teal'],
+      isTeacher && classes.length && ['classes', 'Mes classes', 'users', 'blue'],
+      isTeacher && classes.length && ['academique', 'Mon emploi du temps', 'calendar', 'green'],
       chef && ['filiere', 'Espace chef de filière', 'layers', 'purple'],
-      user.role === 'admin' && ['admin', 'Administration', 'shield', 'red'],
       ['annuaire', 'Personnel de l’IST', 'briefcase', 'purple'],
-      ['actualites', 'Actualités', 'newspaper', 'orange'],
       ['documents', 'Documents officiels', 'file', 'teal'],
       ['plan', "Plan de l'université", 'map', 'teal'],
       ['notifications', 'Notifications', 'bell', 'red'],
     ].filter(Boolean);
+
     const news = db.announcements(user).slice(0, 3);
+
     return `
       <div class="home-grid">
         <div>
           <div class="greet">
             ${ui.avatar(user, 56)}
-            <div><h2>${hello}, ${ui.esc(ui.displayName(user))}</h2>
-              <p>${ui.esc(ui.roleLabel(user))}${chef ? ' · ' + ui.esc(chef.name) : user.fonction ? ' · ' + ui.esc(user.fonction) : ''}</p></div>
+            <div>
+              <h2>${hello}, ${ui.esc(ui.displayName(user))}</h2>
+              <p>
+                <span class="badge ${isAdmin ? 'tone-red' : isCom ? 'tone-orange' : 'tone-blue'}" style="margin-right:6px;">
+                  ${ui.esc(user.fonction || ui.roleLabel(user))}
+                </span>
+                ${chef ? ' · ' + ui.esc(chef.name) : ''}
+                ${user.staffCode ? ` · <code style="font-size:11px;background:var(--surface,#fff);padding:2px 6px;border-radius:6px;border:1px solid var(--border,#cbd5e1);">Code : ${ui.esc(user.staffCode)}</code>` : ''}
+              </p>
+            </div>
           </div>
           <div class="hero-banner">
             ${ui.campusArt()}
             <span class="hb-date">${icon('calendar')}${D.long(new Date())}</span>
-            <h2>Espace du personnel</h2>
-            <p>${classes.length ? `${classes.length} classe${classes.length > 1 ? 's' : ''} · ${classes.reduce((n, c) => n + db.studentsOf(c.id).length, 0)} étudiants inscrits` : ui.esc(IST.config.schoolName)}</p>
+            <h2>${ui.esc(heroTitle)}</h2>
+            <p>${ui.esc(heroSub)}</p>
+            ${heroActions}
           </div>
           ${classes.length ? `<section class="section">
             <div class="section-head"><h2>Ton prochain cours</h2><a class="link" href="#/academique">Emploi du temps${icon('chevronRight')}</a></div>
             ${nextCourseCard(db.nextCourse(user))}
           </section>` : ''}
           <section class="section">
-            <div class="section-head"><h2>Accès rapide</h2></div>
+            <div class="section-head"><h2>Accès rapide à votre espace</h2></div>
             <div class="quick-grid">${tiles.map(([id, label, ic, tone]) => `<a class="tile" href="#/${id}"><span class="ic-box tone-${tone}">${icon(ic)}</span><span>${label}</span></a>`).join('')}</div>
           </section>
           ${classes.length ? `<section class="section">
@@ -107,6 +161,7 @@
         </div>
       </div>`;
   }
+
 
   IST.pages.home = {
     title: 'Accueil',
