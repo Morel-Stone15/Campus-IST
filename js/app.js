@@ -273,6 +273,9 @@
     window.scrollTo(0, 0);
   }
 
+  IST.render = render;
+  IST.router = { render, go, parse };
+
   /* ---------- Événements globaux ---------- */
   document.addEventListener('click', async (e) => {
     // Boutons de la bannière d'autorisation des notifications

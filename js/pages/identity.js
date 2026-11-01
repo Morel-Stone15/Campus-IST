@@ -131,8 +131,8 @@
 
       modal.close();
       ui.toast("Identité de l'IST mise à jour avec succès !", 'success');
-      if (refreshCtx && refreshCtx.refresh) refreshCtx.refresh();
-      else if (IST.app && IST.app.renderCurrent) IST.app.renderCurrent();
+      if (IST.render) IST.render();
+      else if (refreshCtx && refreshCtx.refresh) refreshCtx.refresh();
     });
   }
 

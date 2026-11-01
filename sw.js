@@ -4,7 +4,7 @@
 
 // ── Version & Changelog ──────────────────────────────────────
 // ⚠️  Changer APP_VERSION à chaque déploiement !
-const APP_VERSION  = '9';
+const APP_VERSION  = '10';
 const CACHE        = 'campus-plus-v' + APP_VERSION;
 const PREV_CACHE   = 'campus-plus-v' + (Number(APP_VERSION) - 1);
 
@@ -33,7 +33,7 @@ self.addEventListener('install', (e) => {
       .then(() => {
         // Ne pas appeler skipWaiting() immédiatement :
         // on attend la confirmation de l'utilisateur (ou timeout)
-        console.log('[SW] Nouvelle version installée, en attente d'activation.');
+        console.log("[SW] Nouvelle version installée, en attente d'activation.");
       })
       .catch((err) => {
         // Si le téléchargement échoue → on NE skip pas, l'ancienne version reste active

@@ -210,8 +210,8 @@
 
       modal.close();
       ui.toast(`Informations du service « ${card.title} » mises à jour !`, 'success');
-      if (refreshCtx && refreshCtx.refresh) refreshCtx.refresh();
-      else if (IST.app && IST.app.renderCurrent) IST.app.renderCurrent();
+      if (IST.render) IST.render();
+      else if (refreshCtx && refreshCtx.refresh) refreshCtx.refresh();
     });
   }
 
