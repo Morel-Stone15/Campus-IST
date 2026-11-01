@@ -9,12 +9,13 @@
 
   /* ── Configuration Firebase (projet Campus-IST) ──────────── */
   const FIREBASE_CONFIG = {
-    apiKey:            "AIzaSyCampusISTPlaceholderKeyXXXXXXXXXX",
+    apiKey:            "AIzaSyBcrMZe2U-gUUOg1UstwHP9GEvIrNXZRDU",
     authDomain:        "campus-ist-ga.firebaseapp.com",
     projectId:         "campus-ist-ga",
-    storageBucket:     "campus-ist-ga.appspot.com",
-    messagingSenderId: "000000000000",
-    appId:             "1:000000000000:web:000000000000000000000000",
+    storageBucket:     "campus-ist-ga.firebasestorage.app",
+    messagingSenderId: "438588479247",
+    appId:             "1:438588479247:web:f0f032809f6a71b527907a",
+    measurementId:     "G-W7K0G5S1G9",
   };
   // ⚠️ Remplacer les valeurs ci-dessus par celles du projet Firebase
   // réel (Console Firebase > Paramètres du projet > Vos applications).
@@ -93,10 +94,14 @@
     if (!BASE) return null;
     try {
       const token = await getToken();
-      if (!token) return null;
-      const res = await fetch(`${BASE}/${DOC_PATH}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const headers = {};
+      let url = `${BASE}/${DOC_PATH}`;
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      } else {
+        url += `?key=${FIREBASE_CONFIG.apiKey}`;
+      }
+      const res = await fetch(url, { headers });
       if (res.status === 404) return {}; // Pas encore initialisé
       if (!res.ok) return null;
       return fromFirestore(await res.json());
@@ -109,15 +114,20 @@
     if (!BASE) return false;
     try {
       const token = await getToken();
-      if (!token) return false;
+      const headers = { 'Content-Type': 'application/json' };
       const fields = toFirestore(data);
       const updateMask = Object.keys(data).map(k => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
-      const res = await fetch(`${BASE}/${DOC_PATH}?${updateMask}`, {
+      
+      let url = `${BASE}/${DOC_PATH}?${updateMask}`;
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      } else {
+        const sep = updateMask ? '&' : '';
+        url += `${sep}key=${FIREBASE_CONFIG.apiKey}`;
+      }
+      const res = await fetch(url, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ fields }),
       });
       return res.ok;
