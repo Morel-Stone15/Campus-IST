@@ -67,7 +67,7 @@
   }
 
   /* ---------- Contenus ---------- */
-  const SEED_VERSION = 2;
+  const SEED_VERSION = 3;
   const COLLECTIONS = ['announcements', 'events', 'courses', 'exams', 'documents', 'programmes', 'notifications'];
   const isStaff = (u) => !!u && u.role !== 'etudiant';
   const forUser = (item, u) =>
@@ -187,6 +187,7 @@
     setting: (key, fallback) => S.get('set_' + key, fallback),
     setSetting: (key, value) => S.set('set_' + key, value),
     identity: () => ({ ...IST.data.identity, ...db.setting('identity', {}) }),
+    services: () => ({ ...IST.data.services, ...db.setting('services', {}) }),
 
     CLASSROOM, itemClass,
     /** Classe de l'étudiant, ex. « ASRT-L2 ». */

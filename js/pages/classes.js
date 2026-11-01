@@ -16,11 +16,26 @@
 
   const st = { tab: 'posts', submissionsOpen: null };
 
-  /* ─── Droits ───────────────────────────────────────────────────── */
+  /* ─── Droits & Délégué de classe ─────────────────────────────── */
+  const DELEGATES_KEY = 'class_delegates';
+  function getDelegates() { return IST.db.S.get(DELEGATES_KEY, {}); }
+  function setClassDelegate(classId, studentId) {
+    const map = getDelegates();
+    map[classId] = studentId;
+    IST.db.S.set(DELEGATES_KEY, map);
+  }
+  function isDelegate(u, classId) {
+    if (!u || !u.id) return false;
+    const map = getDelegates();
+    return map[classId] === u.id;
+  }
+
   function canPost(u, info) {
     if (u.role === 'admin') return true;
     if ((u.classes || []).includes(info.id)) return true;
-    return u.role === 'chef' && u.chefFiliere === info.filiere;
+    if (u.role === 'chef' && u.chefFiliere === info.filiere) return true;
+    // Le chef de classe nommé a également l'autorisation de publier des documents et informations
+    return isDelegate(u, info.id);
   }
 
   /* ─── Soumissions (devoirs rendus) ─────────────────────────────── */
@@ -217,20 +232,44 @@
           }).join('')
         : `<div class="card">${ui.empty('calendar', 'Aucun emploi du temps', 'Le chef de filière le publiera bientôt.')}</div>`;
     } else if (st.tab === 'people') {
-      const person = (x, sub) => `<div class="list-item">${ui.avatar(x, 38)}<div class="grow"><strong>${ui.esc(ui.displayName(x))}</strong><small>${ui.esc(sub)}</small></div>
-        ${isStaff || x.role !== 'etudiant' ? `<a class="icon-btn" href="mailto:${ui.esc(x.email)}" aria-label="Écrire à ${ui.esc(x.prenom)}">${icon('mail')}</a>` : ''}</div>`;
+      const currentDelId = getDelegates()[info.id];
+      const canManageDelegates = isStaff && (u.role === 'admin' || u.role === 'chef' || (u.classes || []).includes(info.id));
+      const person = (x, sub, isStudent = false) => {
+        const isCurDel = isStudent && x.id === currentDelId;
+        const delBadge = isCurDel ? `<span class="tag tone-blue" style="margin-left:6px;font-size:11px;">${icon('award')} Chef de classe</span>` : '';
+        const setDelBtn = canManageDelegates && isStudent
+          ? `<button type="button" class="btn btn-sm ${isCurDel ? 'btn-danger-outline' : 'btn-outline'}" data-toggle-delegate="${x.id}" style="font-size:11px;padding:4px 8px;margin-left:6px;">
+              ${icon('award')}${isCurDel ? 'Retirer délégué' : 'Nommer chef de classe'}
+            </button>`
+          : '';
+
+        return `<div class="list-item">${ui.avatar(x, 38)}
+          <div class="grow">
+            <strong>${ui.esc(ui.displayName(x))}${delBadge}</strong>
+            <small>${ui.esc(sub)}</small>
+          </div>
+          ${setDelBtn}
+          ${isStaff || x.role !== 'etudiant' ? `<a class="icon-btn" href="mailto:${ui.esc(x.email)}" aria-label="Écrire à ${ui.esc(x.prenom)}">${icon('mail')}</a>` : ''}
+        </div>`;
+      };
+
       body = `
         <p class="list-title">Encadrement</p>
         <div class="list">${chef ? person(chef, 'Chef de filière') : ''}${teachers.filter((t) => t !== chef).map((t) => person(t, 'Enseignant(e)')).join('')}
           ${!chef && !teachers.length ? `<div class="list-item muted small">Aucun enseignant inscrit pour cette classe.</div>` : ''}</div>
-        ${isStaff ? `<p class="list-title">Étudiants inscrits (${students.length})</p>
-          <div class="list">${students.map((x) => person(x, x.email)).join('') || '<div class="list-item muted small">Aucun étudiant inscrit pour le moment.</div>'}</div>` : ''}`;
+        <p class="list-title">Étudiants de la classe (${students.length})</p>
+        ${canManageDelegates ? `<div class="info-box sm" style="margin-bottom:10px;">${icon('info')}<div><b>Chef de classe</b> : Nommez un étudiant chef de classe pour lui donner l'autorisation de publier des cours, documents et informations officielles dans cet espace.</div></div>` : ''}
+        <div class="list">${students.map((x) => person(x, x.email, true)).join('') || '<div class="list-item muted small">Aucun étudiant inscrit pour le moment.</div>'}</div>`;
     } else {
       // Onglet publications
       const canPublish = canPost(u, info);
+      const isCurDel = isDelegate(u, info.id);
+      // Bannière info pour le chef de classe
+      const delegateNotice = isCurDel ? `<div class="info-box tone-blue" style="margin-bottom:14px;">${icon('award')}<div><b>Espace Délégué de classe</b> : Tu as été nommé chef de classe par l'équipe pédagogique. Tu peux publier des documents et consignes pour tes camarades.</div></div>` : '';
       // Bannière info étudiant sur dépôt de devoirs
       const studentHint = !isStaff ? `<div class="info-box" style="margin-bottom:14px;">${icon('info')}<div><b>Rendus de devoirs</b> Lorsqu'un devoir est publié, un espace de dépôt apparaît directement sous la publication. Tu peux déposer un fichier <strong>PDF ou ZIP</strong> (15 Mo max.).</div></div>` : '';
-      body = `${canPublish ? composer(info) : ''}
+      body = `${delegateNotice}
+        ${canPublish ? composer(info) : ''}
         ${studentHint}
         <div class="stack mt">${posts.map((p) => postCard(p, u, info)).join('') || `<div class="card">${ui.empty('presentation', 'Aucune publication', isStaff ? 'Publie un premier document pour cette classe.' : 'Les documents et informations de tes enseignants apparaîtront ici.')}</div>`}</div>`;
     }
@@ -255,8 +294,32 @@
   /* ─── Montage des événements ────────────────────────────────────── */
   function mountSpace(el, ctx, info) {
     el.addEventListener('click', async (e) => {
-      const t = e.target.closest('[data-ctab], [data-ptype], [data-dl-post], [data-del-post], [data-submit-devoir], [data-view-subs]');
+      const t = e.target.closest('[data-ctab], [data-ptype], [data-dl-post], [data-del-post], [data-submit-devoir], [data-view-subs], [data-toggle-delegate]');
       if (!t) return;
+
+      if (t.dataset.toggleDelegate) {
+        const studentId = t.dataset.toggleDelegate;
+        const cur = getDelegates()[info.id];
+        const student = auth.users().find((x) => x.id === studentId);
+        if (cur === studentId) {
+          setClassDelegate(info.id, null);
+          ui.toast('Rôle de chef de classe retiré.', 'info');
+        } else {
+          setClassDelegate(info.id, studentId);
+          ui.toast(`${student ? student.prenom : 'L\'étudiant'} est maintenant chef de classe ! Il a l'autorisation de publier.`, 'success');
+          if (student) {
+            db.notify({
+              to: student.id,
+              type: 'system',
+              icon: 'award',
+              title: `🎖️ Tu as été nommé chef de classe (${info.id})`,
+              body: "Les enseignants t'ont accordé l'autorisation de publier des documents et informations dans l'espace de ta classe.",
+              link: 'classe',
+            });
+          }
+        }
+        return ctx.refresh();
+      }
 
       if (t.dataset.ctab) { st.tab = t.dataset.ctab; return ctx.refresh(); }
 

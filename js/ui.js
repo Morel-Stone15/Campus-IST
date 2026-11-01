@@ -291,12 +291,43 @@
     </button>`;
   }
 
+  /* Redimensionnement automatique d'images (pour annonces et publications) */
+  function resizeImage(file, maxWidth = 1200, maxHeight = 800, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith('image/')) return reject(new Error('Fichier image invalide.'));
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => reject(new Error('Erreur de lecture image.'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('Erreur lecture fichier.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
   function newsCard(a, opts = {}) {
     const tone = TONES.news[a.category] || 'blue';
+    const imgHtml = a.image ? `<div style="overflow:hidden;border-radius:10px;margin:8px 0 10px;max-height:160px;"><img src="${a.image}" alt="${esc(a.title)}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` : '';
     return `<button type="button" class="card news tone-${tone} ${a.pinned ? 'pinned' : ''}" data-news="${a.id}">
       <div class="news-top"><span class="tag">${esc(a.category)}</span>
         ${a.pinned ? `<span class="pin-flag">${icon('bookmark')}Épinglé</span>` : ''}
         <span class="muted small push">${D.relative(a.date)}</span></div>
+      ${imgHtml}
       <h3>${esc(a.title)}</h3>
       ${opts.compact ? '' : `<p>${esc(a.body)}</p>`}
       <div class="news-foot">${icon('megaphone')}${esc(a.author || 'Administration')}</div>
@@ -305,10 +336,12 @@
 
   function openNews(a) {
     const tone = TONES.news[a.category] || 'blue';
+    const imgHtml = a.image ? `<div style="overflow:hidden;border-radius:12px;margin:12px 0 16px;max-height:320px;"><img src="${a.image}" alt="${esc(a.title)}" style="width:100%;height:auto;max-height:320px;object-fit:cover;border-radius:12px;display:block;"></div>` : '';
     sheet({
       title: 'Annonce',
       body: `<div class="news-detail tone-${tone}">
         <div class="news-top"><span class="tag">${esc(a.category)}</span><span class="muted small push">${D.long(a.date)}</span></div>
+        ${imgHtml}
         <h2>${esc(a.title)}</h2>
         <div class="prose">${esc(a.body).replace(/\n/g, '<br>')}</div>
         <div class="news-foot">${icon('megaphone')}Publié par ${esc(a.author || 'Administration')}</div>
@@ -353,7 +386,7 @@
   const displayName = (u) => (u.civilite ? `${u.civilite} ${u.prenom} ${u.nom}` : `${u.prenom} ${u.nom}`);
 
   IST.ui = {
-    classPicker, sizeLabel, roleLabel, displayName,
+    classPicker, sizeLabel, roleLabel, displayName, resizeImage,
     esc, cap, toast, sheet, confirm: confirmDialog, field, setErr, formData, fillLevels, busy,
     logoMark, avatar, seg, empty, campusArt, course, eventCard, newsCard, openNews,
     TONES, EVENT_ICONS,

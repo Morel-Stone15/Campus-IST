@@ -12,8 +12,12 @@
     { id: 'urgences', title: "Numéros d'urgence", sub: 'En cas de besoin', icon: 'phone', tone: 'red' },
   ];
 
+  function currentServices() {
+    return IST.db ? IST.db.services() : IST.data.services;
+  }
+
   function restaurantOpen() {
-    const r = IST.data.services.restaurant.open;
+    const r = currentServices().restaurant.open;
     const now = new Date();
     const day = now.getDay();
     if (!r.days.includes(day)) return false;
@@ -36,7 +40,7 @@
   }
 
   function restaurant() {
-    const r = IST.data.services.restaurant;
+    const r = currentServices().restaurant;
     const wd = new Date().getDay();
     const today = r.menu[wd];
     const days = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -54,14 +58,14 @@
 
   function urgences() {
     return `<p class="text-2">Appuie sur un numéro pour appeler directement.</p>
-      <div class="list mt">${IST.data.services.urgences.map(([label, num, ic]) => `
+      <div class="list mt">${currentServices().urgences.map(([label, num, ic]) => `
         <a class="list-item" href="${tel(num)}"><span class="ic-box sm tone-red">${icon(ic)}</span>
           <div class="grow"><strong>${ui.esc(label)}</strong><small>${ui.esc(num)}</small></div>${icon('phone')}</a>`).join('')}</div>`;
   }
 
   function open(id) {
     const card = CARDS.find((c) => c.id === id);
-    const s = IST.data.services[id];
+    const s = currentServices()[id];
     const body = id === 'restaurant' ? restaurant() : id === 'urgences' ? urgences() : generic(s);
     ui.sheet({ title: card.title, body: `<div class="tone-${card.tone}">${body}</div>`, size: id === 'restaurant' ? 'wide' : '' });
   }

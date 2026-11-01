@@ -43,6 +43,11 @@
           ${ui.field({ name: 'filiere', label: 'Destinataires', type: 'select', options: ALL_FILIERES, value: '*' })}
         </div>
         ${ui.field({ name: 'author', label: 'Signée par', value: u.role === 'communication' ? 'Service Communication IST' : 'Administration', required: true })}
+        <div class="field" data-field="image">
+          <label>Illustration (Photo, affiche… redimensionnée automatiquement)</label>
+          <label class="file-drop">${icon('image')}<span data-file-name>Choisir une image (JPG, PNG, WebP)…</span><input type="file" name="image" accept="image/*"></label>
+          <div data-preview style="margin-top:8px;display:none;max-height:160px;overflow:hidden;border-radius:8px;"></div>
+        </div>
         ${ui.field({ name: 'body', label: 'Contenu du message', type: 'textarea', rows: 5, placeholder: 'Détails, consignes importantes et instructions pour les étudiants…', required: true })}
         <div class="row-between">
           <label class="check"><input type="checkbox" name="pinned">Épingler en haut de la liste</label>
@@ -53,6 +58,23 @@
     });
 
     const f = s.el.querySelector('#news-add-form');
+    let resizedDataUrl = '';
+
+    f.querySelector('input[type=file]').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      const preview = f.querySelector('[data-preview]');
+      const lbl = f.querySelector('[data-file-name]');
+      if (!file) { resizedDataUrl = ''; preview.style.display = 'none'; lbl.textContent = 'Choisir une image…'; return; }
+      lbl.textContent = `${file.name} (${ui.sizeLabel(file.size)})`;
+      try {
+        resizedDataUrl = await ui.resizeImage(file, 1200, 800, 0.85);
+        preview.innerHTML = `<img src="${resizedDataUrl}" style="width:100%;height:140px;object-fit:cover;border-radius:8px;display:block;">`;
+        preview.style.display = 'block';
+      } catch (err) {
+        ui.toast(err.message, 'error');
+      }
+    });
+
     f.addEventListener('submit', (e) => {
       e.preventDefault();
       const d = ui.formData(f);
@@ -66,6 +88,7 @@
         filiere: d.filiere || '*',
         author: (d.author || 'Service Communication').trim(),
         body: d.body.trim(),
+        image: resizedDataUrl || '',
         pinned: !!d.pinned,
         date: new Date().toISOString(),
       };

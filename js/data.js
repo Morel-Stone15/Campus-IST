@@ -111,14 +111,7 @@
     ],
 
     events: [
-      { id: 'e1', type: 'interne', category: 'Intégration', title: "Semaine d'intégration", date: day(-2), endDate: day(2), time: 'Toute la journée', place: 'Campus IST', organizer: 'Bureau des étudiants', description: 'Visites du campus, rencontres avec les associations, jeux et soirée de bienvenue pour les nouveaux étudiants.' },
-      { id: 'e2', type: 'interne', category: 'Conférence', title: "Conférence : l'IA et les métiers de demain", date: day(3), time: '14:00', place: 'Amphi', organizer: 'Direction des études', description: "Des professionnels du numérique présentent l'impact de l'intelligence artificielle sur les métiers techniques." },
-      { id: 'e3', type: 'interne', category: 'Culture', title: "Journée culturelle de l'IST", date: day(5), time: '10:00', place: 'Campus IST', organizer: 'Bureau des étudiants', description: 'Défilés, danses traditionnelles, gastronomie et concours de talents entre filières.' },
-      { id: 'e4', type: 'interne', category: 'Sport', title: 'Tournoi de football inter-promotions', date: day(8), time: '08:00', place: 'Terrain de sport', organizer: 'Association sportive', description: 'Constitue ton équipe et défends les couleurs de ta promotion. Inscriptions auprès du bureau des sports.' },
-      { id: 'e5', type: 'interne', category: 'Formation', title: 'Hackathon IST', date: day(20), endDate: day(21), time: '09:00', place: 'Bâtiment B', organizer: 'Club informatique', description: '48 heures pour imaginer et développer une solution numérique utile au campus.' },
-      { id: 'e6', type: 'externe', category: 'Emploi', title: 'Forum Emploi Gabon', date: day(11), time: '09:00', place: 'Libreville', organizer: 'Partenaire externe', description: "Rencontre avec des entreprises qui recrutent : stages, premiers emplois et conseils pour l'insertion professionnelle." },
-      { id: 'e7', type: 'externe', category: 'Formation', title: "Concours d'innovation Jeunes", date: day(16), time: '09:00', place: 'Libreville', organizer: 'Partenaire externe', description: "Présente ton projet innovant devant un jury et tente de remporter un accompagnement pour le développer." },
-      { id: 'e8', type: 'externe', category: 'Conférence', title: "Salon de l'étudiant", date: day(25), time: '10:00', place: 'Libreville', organizer: 'Partenaire externe', description: 'Orientation, poursuites d\'études et bourses : rencontre les établissements et les organismes.' },
+      { id: 'e1', type: 'interne', category: 'Intégration', title: "Journée d'accueil et de bienvenue", date: day(0), endDate: day(1), time: '08:30', place: 'Amphithéâtre · Campus IST', organizer: 'Direction Générale & BDE', description: 'Cérémonie officielle de bienvenue pour tous les nouveaux étudiants, présentation du campus, des filières et des services.' },
     ],
 
     notifications: [

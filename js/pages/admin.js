@@ -44,6 +44,11 @@
           ${ui.field({ name: 'category', label: 'Catégorie', type: 'select', options: ['Scolarité', 'Vie étudiante', 'Urgent', 'Général'], value: 'Général' })}
           ${ui.field({ name: 'filiere', label: 'Destinataires', type: 'select', options: ALL, value: '*' })}
         </div>
+        <div class="field" data-field="image">
+          <label>Illustration (Photo, affiche… redimensionnée automatiquement)</label>
+          <label class="file-drop">${icon('image')}<span data-file-name>Choisir une image (JPG, PNG, WebP)…</span><input type="file" name="image" accept="image/*"></label>
+          <div data-preview style="margin-top:8px;display:none;max-height:160px;overflow:hidden;border-radius:8px;"></div>
+        </div>
         ${ui.field({ name: 'body', label: 'Contenu', type: 'textarea', rows: 5, required: true })}
         ${ui.field({ name: 'author', label: 'Signée par', value: 'Administration' })}
         <label class="check"><input type="checkbox" name="pinned">Épingler en haut de la liste</label>
@@ -183,6 +188,94 @@
       ui.toast('Document mis à jour.', 'success');
       ctx.refresh();
     });
+  }
+
+  /* ---------- Gestion des Programmes des UE ---------- */
+  function programmesTab() {
+    const list = db.all('programmes');
+    return `<div class="grid-2" style="align-items:start">
+      <form class="card admin-form" data-form="programme" novalidate>
+        <h3>Ajouter une Unité d'Enseignement (UE)</h3>
+        <div class="form-row">
+          ${ui.field({ name: 'code', label: "Code de l'UE", placeholder: 'Ex. UE 101, UE 203…', required: true })}
+          ${ui.field({ name: 'semestre', label: 'Semestre', type: 'select', options: ['Semestre 1', 'Semestre 2', 'Semestre 3', 'Semestre 4', 'Semestre 5', 'Semestre 6'], value: 'Semestre 1' })}
+        </div>
+        ${ui.field({ name: 'title', label: "Intitulé de la matière / UE", placeholder: 'Ex. Systèmes Distribués & Cloud', required: true })}
+        <div class="form-row">
+          ${ui.field({ name: 'pole', label: 'Pôle académique', type: 'select', options: [['tech', 'Pôle Technologique'], ['management', 'Pôle Management'], ['*', 'Commun aux deux pôles']], value: 'tech' })}
+          ${ui.field({ name: 'credits', label: 'Crédits ECTS', type: 'number', value: '5', required: true })}
+        </div>
+        <div class="form-row">
+          ${ui.field({ name: 'hours', label: 'Volume horaire (heures)', type: 'number', value: '48', required: true })}
+          ${ui.field({ name: 'teacher', label: 'Enseignant responsable', placeholder: 'Ex. Dr Moussavou, M. Ndong…', required: true })}
+        </div>
+        ${ui.field({ name: 'description', label: 'Objectifs et programme détaillé', type: 'textarea', rows: 4, placeholder: 'Compétences visées, chapitres du cours, modalités d\'évaluation…', required: true })}
+        <button class="btn btn-primary" type="submit">${icon('plus')}Enregistrer l'UE</button>
+      </form>
+      <div class="stack">
+        <div class="stat-row" style="margin-bottom:12px;">
+          <div class="stat"><b>${list.length}</b><small>Total UE enregistrées</small></div>
+          <div class="stat"><b>${list.reduce((acc, u) => acc + (+u.credits || 0), 0)}</b><small>Total crédits</small></div>
+          <div class="stat"><b>${list.reduce((acc, u) => acc + (+u.hours || 0), 0)} h</b><small>Volume global</small></div>
+        </div>
+        ${list.map((u) => `
+          <div class="card admin-row">
+            <span class="ic-box sm tone-${u.pole === 'management' ? 'orange' : 'blue'}">${icon('book')}</span>
+            <div class="grow">
+              <strong>${ui.esc(u.code)} · ${ui.esc(u.title)}</strong>
+              <small class="muted">${ui.esc(u.semestre)} · ${u.credits} crédits · ${u.hours} h · ${ui.esc(u.teacher)} · ${u.pole === 'management' ? 'Pôle Management' : u.pole === 'tech' ? 'Pôle Techno.' : 'Tous pôles'}</small>
+            </div>
+            ${delBtn('programmes', u.id)}
+          </div>`).join('') || ui.empty('book', 'Aucune UE enregistrée')}
+      </div>
+    </div>`;
+  }
+
+  /* ---------- Gestion des Services du Campus ---------- */
+  function servicesTab() {
+    const s = db.services();
+    const r = s.restaurant || {};
+    const inf = s.infirmerie || {};
+    const bib = s.bibliotheque || {};
+    const sp = s.sport || {};
+    const sout = s.soutien || {};
+
+    const menuLines = Object.entries(r.menu || {}).map(([d, items]) => `${d}:${items.join(', ')}`).join('\n');
+    const pricesLines = (r.prices || []).map(([k, v]) => `${k} : ${v}`).join('\n');
+
+    return `<div class="grid-2" style="align-items:start">
+      <form class="card admin-form" data-form="service-resto" novalidate>
+        <h3>${icon('utensils')} Restaurant & Cafétéria Universitaire</h3>
+        ${ui.field({ name: 'location', label: 'Localisation', value: r.location || 'Restaurant du campus' })}
+        ${ui.field({ name: 'hours', label: 'Horaires du restaurant', type: 'textarea', rows: 3, value: (r.hours || []).map(([k, v]) => `${k} : ${v}`).join('\n'), hint: 'Une ligne par plage, format : Jour : Plage horaire' })}
+        ${ui.field({ name: 'prices', label: 'Tarifs des repas & snacks', type: 'textarea', rows: 4, value: pricesLines, hint: 'Une ligne par plat, ex. Plat du jour : 1 000 FCFA' })}
+        ${ui.field({ name: 'menus', label: 'Menus de la semaine (1=Lun ... 6=Sam)', type: 'textarea', rows: 6, value: menuLines, hint: 'Format : 1:Plat 1, Plat 2, Fruit' })}
+        <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer le Restaurant</button>
+      </form>
+
+      <div class="stack">
+        <form class="card admin-form" data-form="service-sante" novalidate>
+          <h3>${icon('medical')} Infirmerie & Urgences Médicales</h3>
+          <div class="form-row">
+            ${ui.field({ name: 'inf_phone', label: 'Téléphone de l\'infirmerie', value: inf.phone || '+241 00 00 00 00' })}
+            ${ui.field({ name: 'inf_location', label: 'Localisation', value: inf.location || 'Campus IST' })}
+          </div>
+          ${ui.field({ name: 'inf_desc', label: 'Description des soins', type: 'textarea', rows: 3, value: inf.description || '' })}
+          <div class="form-row">
+            ${ui.field({ name: 'sout_phone', label: 'Soutien psychologique (tél.)', value: sout.phone || '+241 00 00 00 00' })}
+            ${ui.field({ name: 'sout_hours', label: 'Permanences soutien', value: (sout.hours && sout.hours[0] ? sout.hours[0].join(' : ') : 'Mardi et jeudi : 9h00 – 16h00') })}
+          </div>
+          <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer Pôle Santé</button>
+        </form>
+
+        <form class="card admin-form" data-form="service-culture" novalidate>
+          <h3>${icon('library')} Bibliothèque & Complexe Sportif</h3>
+          ${ui.field({ name: 'bib_desc', label: 'Bibliothèque Universitaire', type: 'textarea', rows: 2, value: bib.description || '' })}
+          ${ui.field({ name: 'sport_desc', label: 'Complexe Sportif & Loisirs', type: 'textarea', rows: 2, value: sp.description || '' })}
+          <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer Bibliothèque & Sport</button>
+        </form>
+      </div>
+    </div>`;
   }
 
   /* ---------- Identité : hymne, paroles, histoire ---------- */
@@ -471,7 +564,25 @@
     const d = ui.formData(f);
     if (kind === 'annonce') {
       if (!required(f, d, ['title', 'body'])) return false;
-      const a = db.add('announcements', { title: d.title.trim(), body: d.body.trim(), category: d.category, filiere: d.filiere, author: d.author.trim() || 'Administration', pinned: !!d.pinned, date: new Date().toISOString() });
+      let imgData = '';
+      const imgInput = f.querySelector('input[type=file][name=image]');
+      if (imgInput && imgInput.files[0]) {
+        try {
+          imgData = await ui.resizeImage(imgInput.files[0], 900, 600, 0.85);
+        } catch (e) {
+          console.warn('Auto resize error:', e);
+        }
+      }
+      const a = db.add('announcements', {
+        title: d.title.trim(),
+        body: d.body.trim(),
+        category: d.category,
+        filiere: d.filiere,
+        image: imgData,
+        author: d.author.trim() || 'Administration',
+        pinned: !!d.pinned,
+        date: new Date().toISOString()
+      });
       if (!a) return false;
       db.notify({ type: d.category === 'Urgent' ? 'cours' : 'annonce', icon: 'megaphone', title: a.title, body: a.body.slice(0, 90), link: 'actualites/' + a.id });
       ui.toast('Annonce publiée.', 'success');
@@ -485,8 +596,87 @@
     } else if (kind === 'cours') {
       if (!required(f, d, ['title', 'room', 'start', 'end'])) return false;
       if (d.end <= d.start) { ui.setErr(f, 'end', "L'heure de fin doit suivre l'heure de début."); return false; }
-      db.add('courses', { title: d.title.trim(), day: +d.day, type: d.type, start: d.start, end: d.end, room: d.room.trim(), teacher: d.teacher.trim(), pole: d.pole, filiere: d.filiere, niveau: d.niveau });
-      ui.toast("Séance ajoutée à l'emploi du temps.", 'success');
+      const newCourse = db.add('courses', { title: d.title.trim(), day: +d.day, type: d.type, start: d.start, end: d.end, room: d.room.trim(), teacher: d.teacher.trim(), pole: d.pole, filiere: d.filiere, niveau: d.niveau });
+      
+      // Notifier immédiatement les étudiants de la classe ou de la filière avec repérage sur le plan
+      const targetLabel = [d.filiere !== '*' ? d.filiere : '', d.niveau !== '*' ? d.niveau : ''].filter(Boolean).join(' ') || 'Toutes les classes';
+      const roomNotice = db.roomText(d.room.trim());
+      db.notify({
+        type: 'cours',
+        icon: 'calendar',
+        filiere: d.filiere,
+        niveau: d.niveau,
+        title: `📅 Nouvel emploi du temps : ${d.title.trim()}`,
+        body: `Séance programmée (${d.type}) de ${D.hm(d.start)} à ${D.hm(d.end)}. Salle indiquée : ${roomNotice}. Clique pour localiser la salle sur le plan !`,
+        link: 'plan/' + encodeURIComponent(d.room.trim()),
+      });
+      ui.toast(`Séance ajoutée et étudiants de [${targetLabel}] notifiés avec signalement de la salle !`, 'success');
+    } else if (kind === 'programme') {
+      if (!required(f, d, ['code', 'title', 'credits', 'hours', 'teacher', 'description'])) return false;
+      db.add('programmes', {
+        code: d.code.trim().toUpperCase(),
+        semestre: d.semestre,
+        title: d.title.trim(),
+        pole: d.pole,
+        credits: +d.credits || 1,
+        hours: +d.hours || 1,
+        teacher: d.teacher.trim(),
+        description: d.description.trim(),
+      });
+      ui.toast("Unité d'enseignement (UE) enregistrée avec succès !", 'success');
+    } else if (kind === 'service-resto') {
+      const cur = db.services();
+      const resto = cur.restaurant || {};
+      const hours = d.hours.split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length === 2);
+      const prices = d.prices.split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length === 2);
+      const menu = {};
+      d.menus.split('\n').forEach((l) => {
+        const parts = l.split(':');
+        if (parts.length >= 2) {
+          const dayNum = parseInt(parts[0].trim(), 10);
+          if (dayNum) menu[dayNum] = parts.slice(1).join(':').split(',').map((x) => x.trim()).filter(Boolean);
+        }
+      });
+      db.setSetting('services', {
+        ...cur,
+        restaurant: {
+          ...resto,
+          location: d.location.trim() || resto.location,
+          hours: hours.length ? hours : resto.hours,
+          prices: prices.length ? prices : resto.prices,
+          menu: Object.keys(menu).length ? menu : resto.menu,
+        },
+      });
+      ui.toast('Informations et menus du restaurant enregistrés !', 'success');
+    } else if (kind === 'service-sante') {
+      const cur = db.services();
+      const inf = cur.infirmerie || {};
+      const sout = cur.soutien || {};
+      db.setSetting('services', {
+        ...cur,
+        infirmerie: {
+          ...inf,
+          phone: d.inf_phone.trim(),
+          location: d.inf_location.trim(),
+          description: d.inf_desc.trim(),
+        },
+        soutien: {
+          ...sout,
+          phone: d.sout_phone.trim(),
+          hours: [[d.sout_hours.trim()]],
+        },
+      });
+      ui.toast('Informations médicales et soutien enregistrés !', 'success');
+    } else if (kind === 'service-culture') {
+      const cur = db.services();
+      const bib = cur.bibliotheque || {};
+      const sp = cur.sport || {};
+      db.setSetting('services', {
+        ...cur,
+        bibliotheque: { ...bib, description: d.bib_desc.trim() },
+        sport: { ...sp, description: d.sport_desc.trim() },
+      });
+      ui.toast('Informations Bibliothèque et Complexe Sportif enregistrées !', 'success');
     } else if (kind === 'document') {
       if (!required(f, d, ['title'])) return false;
       const file = f.querySelector('input[type=file]').files[0];
@@ -529,8 +719,28 @@
     subtitle: 'Gérer les contenus et les comptes de Campus+',
     admin: true,
     render(ctx) {
-      const tabs = [['apercu', 'Aperçu'], ['annonces', 'Annonces'], ['evenements', 'Événements'], ['cours', 'Emploi du temps'], ['documents', 'Documents'], ['identite', "Identité & hymne"], ['utilisateurs', 'Comptes']];
-      const body = { apercu: overview, annonces, evenements, cours, documents, identite, utilisateurs }[st.tab](ctx);
+      const tabs = [
+        ['apercu', 'Aperçu'],
+        ['annonces', 'Annonces'],
+        ['programmes', 'Programmes des UE'],
+        ['cours', 'Emploi du temps'],
+        ['services', 'Services du campus'],
+        ['evenements', 'Événements'],
+        ['documents', 'Documents'],
+        ['identite', "Identité de l'IST"],
+        ['utilisateurs', 'Comptes'],
+      ];
+      const body = {
+        apercu: overview,
+        annonces,
+        programmes: programmesTab,
+        cours,
+        services: servicesTab,
+        evenements,
+        documents,
+        identite,
+        utilisateurs
+      }[st.tab](ctx);
       return `<div class="page-tabs">${ui.seg(tabs, st.tab, 'tab')}</div>${body}`;
     },
     mount(el, ctx) {
@@ -595,8 +805,23 @@
         }
         if (e.target.type === 'file') {
           const file = e.target.files[0];
-          e.target.closest('.field').querySelector('[data-file-name]').textContent = file ? `${file.name} (${ui.sizeLabel(file.size)})` : 'Choisir un fichier…';
+          const field = e.target.closest('.field');
+          const nameSpan = field.querySelector('[data-file-name]');
+          if (nameSpan) nameSpan.textContent = file ? `${file.name} (${ui.sizeLabel(file.size)})` : 'Choisir un fichier…';
           ui.setErr(e.target.form, e.target.name, '');
+          // Image preview (for announcement illustration)
+          const preview = field.querySelector('[data-preview]');
+          if (preview && file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              preview.style.display = 'block';
+              preview.innerHTML = `<img src="${ev.target.result}" alt="Aperçu" style="width:100%;height:160px;object-fit:cover;border-radius:8px;display:block;">`;
+            };
+            reader.readAsDataURL(file);
+          } else if (preview) {
+            preview.style.display = 'none';
+            preview.innerHTML = '';
+          }
         }
       });
       el.addEventListener('submit', async (e) => {

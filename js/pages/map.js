@@ -516,7 +516,13 @@
   IST.pages.plan = {
     title: "Plan de l'université",
     subtitle: 'Master Plan officiel : amphithéâtres, bâtiments pédagogiques, cité U et équipements',
-    render({ user }) {
+    render({ user, params = [] }) {
+      const targetParam = params[0] || (new URLSearchParams(location.hash.split('?')[1] || '').get('place'));
+      if (targetParam) {
+        // Résolution de paramètre salle ou lieu (ex: 'amphi', 'P107', 'batB', 'room-BP107')
+        const matched = places().find((p) => p.id === targetParam || norm(p.name).includes(norm(targetParam)) || (p.num && String(p.num) === targetParam));
+        if (matched) st.selected = matched.id;
+      }
       const mine = IST.db.myRoom(user);
       const mineId = mine && (typeof mine.raw === 'string' ? 'amphi' : 'room-' + (mine.raw[0] || 'X') + mine.raw[1]);
       if (st.zoom == null) st.zoom = window.innerWidth < 700 ? 1.8 : 1;
@@ -541,9 +547,15 @@
         </div>
       </div>`;
     },
-    mount(el) {
+    mount(el, { params = [] } = {}) {
       const $ = (s) => el.querySelector(s);
       const wrap = $('[data-wrap]'), canvas = $('[data-canvas]');
+
+      if (params && params[0]) {
+        const targetParam = params[0];
+        const matched = places().find((p) => p.id === targetParam || norm(p.name).includes(norm(targetParam)) || (p.num && String(p.num) === targetParam));
+        if (matched) st.selected = matched.id;
+      }
 
       function update() {
         $('[data-markers]').innerHTML = markersHTML();
