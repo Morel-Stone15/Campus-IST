@@ -5,11 +5,31 @@
 (function () {
   window.IST = window.IST || {};
 
+  // ── Résolution automatique de l'URL de l'API ────────────────────────────
+  // Priorité :
+  //   1. window.IST_API_BASE défini manuellement (déploiement custom)
+  //   2. Protocole file:// → serveur local
+  //   3. GitHub Pages (*.github.io) → URL Render configurée dans CAMPUS_API_URL
+  //   4. Même origine que le frontend (déploiement unifié Flask)
+  const RENDER_API_URL = window.CAMPUS_API_URL || 'https://campus-plus.onrender.com/api/v1';
+  const isGitHubPages = window.location.hostname.endsWith('.github.io');
+
   const API_BASE = window.IST_API_BASE || (
     window.location.protocol === 'file:'
       ? 'http://localhost:5000/api/v1'
-      : `${window.location.origin}/api/v1`
+      : isGitHubPages
+        ? RENDER_API_URL
+        : `${window.location.origin}/api/v1`
   );
+
+  // Avertissement développeur si on pointe vers Render depuis GitHub Pages
+  if (isGitHubPages) {
+    console.info(
+      '[Campus+ API] GitHub Pages détecté. API pointée vers :',
+      API_BASE,
+      '\nPour changer, définissez window.CAMPUS_API_URL avant ce script.'
+    );
+  }
 
   const TOKEN_KEY = 'istc_jwt_token';
   const REFRESH_KEY = 'istc_jwt_refresh';
@@ -75,7 +95,7 @@
         }
         return { ok: true, status: res.status, data: data ? (data.data !== undefined ? data.data : data) : null };
       } catch (err) {
-        return { ok: false, status: 0, error: 'Connexion au serveur impossible (serveur hors-ligne ou problème réseau)' };
+        return { ok: false, status: 0, error: 'Serveur Campus+ hors-ligne ou non joignable (vérifiez la connexion réseau).' };
       }
     },
 

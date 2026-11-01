@@ -44,7 +44,14 @@ class BaseConfig:
     )
 
     # ── CORS ─────────────────────────────────────────────────────────────────
-    CORS_ORIGINS: list = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: list = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+        # GitHub Pages frontend
+        "https://morel-stone15.github.io",
+    ]
 
     # ── Firebase ─────────────────────────────────────────────────────────────
     FIREBASE_CREDENTIALS: str = os.environ.get("FIREBASE_CREDENTIALS", "")
@@ -75,7 +82,9 @@ class ProductionConfig(BaseConfig):
     )
     # Tighten CORS in production – override via env if needed
     CORS_ORIGINS: list = os.environ.get(
-        "CORS_ORIGINS", "https://campusplus.example.com"
+        "CORS_ORIGINS",
+        # GitHub Pages frontend + any custom domain
+        "https://morel-stone15.github.io,https://campusplus.example.com"
     ).split(",")
     SQLALCHEMY_ENGINE_OPTIONS: dict = {
         "pool_pre_ping": True,

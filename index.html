@@ -24,6 +24,15 @@
   <noscript><p style="padding:24px">Campus+ a besoin de JavaScript pour fonctionner.</p></noscript>
 
   <script src="js/config.js"></script>
+  <!-- ── URL de l'API Render (modifier si le nom du service change) ────────
+       Cette variable est lue par js/api.js avant de déterminer l'URL de l'API.
+       Si vous hébergez l'API ailleurs, changez cette valeur.
+       Si le frontend et le backend sont sur le même serveur, laissez commenté. -->
+  <script>
+    // URL de l'API Campus+ sur Render (utilisée uniquement depuis GitHub Pages)
+    // ⚠️ Mettez à jour cette URL si vous renommez votre service sur Render.
+    window.CAMPUS_API_URL = 'https://campus-plus.onrender.com/api/v1';
+  </script>
   <script src="js/icons.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/data.js"></script>
