@@ -99,9 +99,9 @@
     /* ---------- Connexion ---------- */
     login: {
       render: () => layout('login', `
-        <div class="auth-head"><h2>Se connecter</h2><p class="text-2">Entre ton adresse email et ton mot de passe.</p></div>
+        <div class="auth-head"><h2>Se connecter</h2><p class="text-2">Entre ton adresse email ou ton code d'accès et ton mot de passe.</p></div>
         <form class="stack-lg" novalidate>
-          ${ui.field({ name: 'email', label: 'Adresse email', type: 'email', icon: 'mail', placeholder: 'herlienzamba@gmail.com', autocomplete: 'email', required: true })}
+          ${ui.field({ name: 'email', label: 'Adresse email ou Code d’accès', type: 'text', icon: 'user', placeholder: 'admin@ist.ga ou IST-ADM-2025', autocomplete: 'username', required: true })}
           ${ui.field({ name: 'password', label: 'Mot de passe', type: 'password', icon: 'lock', placeholder: 'Ton mot de passe', autocomplete: 'current-password', required: true })}
           <div class="row-between">
             <label class="check"><input type="checkbox" name="remember" checked>Rester connecté</label>
@@ -111,25 +111,36 @@
           <button class="btn btn-primary btn-lg btn-block" type="submit">Se connecter</button>
         </form>
         <p class="auth-switch">Pas encore de compte ? <a class="link" href="#/register">Créer un compte</a></p>
-        <a class="staff-link" href="#/personnel">${icon('shield')}<span><b>Se connecter en tant que membre de l'administration</b><small>Enseignants, chefs de filière, personnel administratif</small></span>${icon('chevronRight')}</a>`),
+        <a class="staff-link" href="#/personnel">${icon('shield')}<span><b>Accès spécial du personnel & administration</b><small>Enseignants, administration, services avec code d'accès</small></span>${icon('chevronRight')}</a>`),
       mount(el) {
         const f = el.querySelector('form');
         f.addEventListener('submit', async (e) => {
           e.preventDefault();
           const d = ui.formData(f);
           showAlert(f, '');
-          const eErr = d.email.trim() ? '' : 'Entre ton adresse email.';
+          const ident = d.email.trim();
+          const eErr = ident ? '' : "Entre ton adresse email ou ton code d'accès.";
           const pErr = d.password ? '' : 'Entre ton mot de passe.';
           ui.setErr(f, 'email', eErr);
           ui.setErr(f, 'password', pErr);
           if (eErr || pErr) return;
           const btn = f.querySelector('[type=submit]');
           ui.busy(btn, true);
-          const r = await auth.login(d.email, d.password, !!d.remember);
+          const r = await auth.login(ident, d.password, !!d.remember);
           ui.busy(btn, false);
           if (!r.ok) return showAlert(f, r.error);
-          ui.toast(`Bon retour, ${r.user.prenom} !`, 'success');
-          location.hash = '#/home';
+
+          ui.toast(`Bon retour, ${r.user.civilite ? r.user.civilite + ' ' : ''}${r.user.prenom} !`, 'success');
+
+          const landing = {
+            admin:         'admin',
+            communication: 'actualites',
+            enseignant:    'classes',
+            chef:          'filiere',
+            personnel:     'annuaire',
+            etudiant:      'classe',
+          }[r.user.role] || 'home';
+          location.hash = '#/' + landing;
         });
       },
     },
@@ -497,7 +508,7 @@
           <button class="btn btn-primary btn-lg btn-block" type="submit">Créer mon compte et me connecter</button>
         </form>
         <form class="stack-lg" data-mode="login" hidden novalidate>
-          ${ui.field({ name: 'email', label: 'Adresse email', type: 'email', icon: 'mail', placeholder: 'herl0ienzamba@gmail.com', autocomplete: 'email' })}
+          ${ui.field({ name: 'email', label: 'Adresse email ou Code d’accès', type: 'text', icon: 'user', placeholder: 'admin@ist.ga ou IST-ADM-2025', autocomplete: 'username' })}
           ${ui.field({ name: 'password', label: 'Mot de passe', type: 'password', icon: 'lock', autocomplete: 'current-password' })}
           <div class="form-alert" role="alert" hidden></div>
           <button class="btn btn-primary btn-lg btn-block" type="submit">Se connecter</button>
@@ -546,15 +557,25 @@
           ui.busy(btn, false);
           if (!r.ok) return r.field ? ui.setErr(create, r.field, r.error) : showAlert(create, r.error);
           ui.toast(`Compte créé. Bienvenue, ${r.user.prenom} !`, 'success');
-          location.hash = '#/home';
+          const landing = {
+            admin:         'admin',
+            communication: 'actualites',
+            enseignant:    'classes',
+            chef:          'filiere',
+            personnel:     'annuaire',
+            etudiant:      'classe',
+          }[r.user.role] || 'home';
+          location.hash = '#/' + landing;
         });
 
         login.addEventListener('submit', async (e) => {
           e.preventDefault();
           const d = ui.formData(login);
+          const ident = (d.email || '').trim();
+          if (!ident) return showAlert(login, "Entre ton adresse email ou ton code d'accès.");
           const btn = login.querySelector('[type=submit]');
           ui.busy(btn, true);
-          const r = await auth.login(d.email, d.password, true);
+          const r = await auth.login(ident, d.password, true);
           ui.busy(btn, false);
           if (!r.ok) return showAlert(login, r.error);
           if (r.user.role === 'etudiant') {
@@ -562,7 +583,15 @@
             return showAlert(login, 'Ce compte est un compte étudiant. Utilise la connexion étudiant.');
           }
           ui.toast(`Bon retour, ${r.user.prenom} !`, 'success');
-          location.hash = '#/home';
+          const landing = {
+            admin:         'admin',
+            communication: 'actualites',
+            enseignant:    'classes',
+            chef:          'filiere',
+            personnel:     'annuaire',
+            etudiant:      'classe',
+          }[r.user.role] || 'home';
+          location.hash = '#/' + landing;
         });
       },
     },

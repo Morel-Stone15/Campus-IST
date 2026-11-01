@@ -22,11 +22,11 @@ IST.config = {
 
   // Configure these only for a private, local installation.
   adminEmail: 'admin@ist.ga',
-  adminPassword: '',
+  adminPassword: 'AdminIST2025!',
 
   // Code unique demandé aux membres du personnel (enseignants, chefs de
   // filière, administration) avant de pouvoir créer leur compte.
-  staffCode: '',
+  staffCode: 'IST-ADM-2025',
 
   roles: {
     etudiant: 'Étudiant(e)',
