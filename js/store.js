@@ -46,6 +46,10 @@
       try {
         localStorage.setItem(PFX + k, JSON.stringify(v));
         queueRemoteWrite(k, v);
+        // Sync Firestore si configuré
+        if (IST.fsync && IST.fsync.configured && IST.fsync.sharedKeys.includes(k)) {
+          IST.fsync.saveKey(k, v).catch(() => {});
+        }
         return true;
       } catch (e) {
         IST.ui.toast("L'espace de stockage du navigateur est plein.", 'error');
@@ -93,10 +97,50 @@
   const db = {
     S, uid, isStaff,
     init() {
-      // Augmenter SEED_VERSION remplace les contenus de démonstration enregistrés.
-      const fresh = S.get('seed_version') !== SEED_VERSION;
-      COLLECTIONS.forEach((k) => (fresh || S.get(k) == null) && S.set(k, IST.data[k] || []));
+      const prevVersion = S.get('seed_version');
+      const isFresh = prevVersion == null;
+      const isVersionBump = prevVersion !== SEED_VERSION;
+
+      COLLECTIONS.forEach((k) => {
+        const existing = S.get(k);
+        if (existing == null) {
+          // Première fois : charger les données de démonstration
+          S.set(k, IST.data[k] || []);
+        } else if (isVersionBump && Array.isArray(existing) && Array.isArray(IST.data[k])) {
+          // Mise à jour : fusionner en ajoutant uniquement les items seed manquants
+          // Les items créés par l'admin (sans id seed connu) sont CONSERVÉS.
+          const existingIds = new Set(existing.map((x) => x.id));
+          const seedIds = new Set((IST.data[k] || []).map((x) => x.id));
+          // Supprimer uniquement les vieux items de seed qui n'ont pas été modifiés
+          const userItems = existing.filter((x) => !seedIds.has(x.id));
+          // Ajouter les nouveaux items de seed
+          const newSeedItems = (IST.data[k] || []).filter((x) => !existingIds.has(x.id));
+          S.set(k, [...userItems, ...newSeedItems]);
+        }
+        // else : même version, rien à changer
+      });
+
       S.set('seed_version', SEED_VERSION);
+    },
+
+    /** Charge les données partagées depuis Firestore et les écrit en localStorage */
+    async loadFromFirestore() {
+      if (!IST.fsync || !IST.fsync.configured) return false;
+      try {
+        const remote = await IST.fsync.load();
+        if (!remote) return false;
+        let updated = 0;
+        IST.fsync.sharedKeys.forEach((k) => {
+          if (remote[k] !== undefined && remote[k] !== null) {
+            // Écriture directe dans localStorage sans re-déclencher la sync Firestore
+            try { localStorage.setItem(PFX + k, JSON.stringify(remote[k])); } catch (_) {}
+            updated++;
+          }
+        });
+        return updated > 0;
+      } catch {
+        return false;
+      }
     },
     async syncRemote(user) {
       if (location.protocol === 'file:' || !IST.api || !IST.api.appData || !IST.api.getToken()) {

@@ -326,6 +326,10 @@
   /* ---------- Démarrage ---------- */
   (async function boot() {
     db.init();
+    // Charger les données partagées depuis Firestore (cross-device)
+    // Si Firestore est configuré, les données de l'admin sont synchronisées
+    // entre tous les appareils sans être perdues lors des push GitHub.
+    await db.loadFromFirestore().catch(() => {});
     await auth.ensureAdmin();
     const user = auth.current();
     if (user && IST.api && IST.api.getToken()) {

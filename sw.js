@@ -4,7 +4,7 @@
 
 // ── Version & Changelog ──────────────────────────────────────
 // ⚠️  Changer APP_VERSION à chaque déploiement !
-const APP_VERSION  = '7';
+const APP_VERSION  = '8';
 const CACHE        = 'campus-plus-v' + APP_VERSION;
 const PREV_CACHE   = 'campus-plus-v' + (Number(APP_VERSION) - 1);
 
@@ -20,7 +20,7 @@ const CHANGELOG = [
 
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css', 'assets/icon.svg',
-  'js/config.js', 'js/icons.js', 'js/ui.js', 'js/data.js', 'js/api.js', 'js/store.js', 'js/app.js',
+  'js/config.js', 'js/icons.js', 'js/ui.js', 'js/data.js', 'js/api.js', 'js/firebase.js', 'js/store.js', 'js/app.js',
   'js/pages/auth.js', 'js/pages/academic.js', 'js/pages/documents.js', 'js/pages/news.js',
   'js/pages/agenda.js', 'js/pages/services.js', 'js/pages/map.js', 'js/pages/identity.js',
   'js/pages/profile.js', 'js/pages/notifications.js', 'js/pages/admin.js', 'js/pages/classes.js',
