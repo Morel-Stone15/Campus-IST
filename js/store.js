@@ -554,6 +554,27 @@
         body: welcomeBody,
       });
 
+      // Envoyer le code d'accès personnel dans les notifications
+      if (staffCode) {
+        db.notify({
+          to: user.id,
+          type: 'system',
+          icon: 'key',
+          link: 'profil',
+          title: `🔑 Votre code d'accès personnel : ${staffCode}`,
+          body: `Bienvenue à l'IST ! Votre code d'accès aléatoire et unique est : ${staffCode}. Utilisez-le pour vous connecter directement à votre espace de travail.`,
+        });
+        if (IST.pwaNotification && IST.pwaNotification.isSupported()) {
+          try {
+            IST.pwaNotification.send(
+              "🔑 Code d'accès IST attribué",
+              `Votre code d'accès personnel : ${staffCode}. Utilisez-le pour vous connecter.`,
+              'notifications'
+            );
+          } catch (_) {}
+        }
+      }
+
       // Notifier les enseignants de la classe si c'est un étudiant
       if (role === 'etudiant') {
         try {
@@ -579,11 +600,25 @@
     async registerStaff(d) {
       const email = d.email.trim().toLowerCase();
       if (auth.findByEmail(email)) return { ok: false, field: 'email', error: 'Un compte existe déjà avec cette adresse email.' };
+
+      const role = d.role || 'enseignant';
+      const pfxMap = {
+        admin: 'ADM',
+        communication: 'COM',
+        chef: 'CHF',
+        enseignant: 'ENS',
+        personnel: 'PER',
+      };
+      const pfx = pfxMap[role] || 'STF';
+      const num = Math.floor(1000 + Math.random() * 9000);
+      const staffCode = `IST-${pfx}-${num}`;
+
       const user = {
         id: uid(),
         civilite: d.civilite || '', prenom: d.prenom.trim(), nom: d.nom.trim(), email,
-        filiere: '', niveau: '', phone: '',
-        role: d.role,
+        filiere: '', niveau: '', phone: d.phone || '',
+        role: role,
+        staffCode: staffCode,
         fonction: (d.fonction || '').trim(),
         classes: d.role === 'admin' ? d.classes || [] : d.classes,
         chefFiliere: d.role === 'chef' ? d.chefFiliere : '',
@@ -600,6 +635,23 @@
         title: `Bienvenue sur Campus+, ${user.prenom} !`,
         body: user.role === 'admin' ? "Ton espace d'administration est prêt." : 'Retrouve tes classes, ton emploi du temps et publie des documents pour tes étudiants.',
       });
+      db.notify({
+        to: user.id,
+        type: 'system',
+        icon: 'key',
+        link: 'profil',
+        title: `🔑 Votre code d'accès personnel : ${staffCode}`,
+        body: `Bienvenue à l'IST ! Votre code d'accès aléatoire et unique est : ${staffCode}. Utilisez-le pour vous connecter directement à votre espace de travail.`,
+      });
+      if (IST.pwaNotification && IST.pwaNotification.isSupported()) {
+        try {
+          IST.pwaNotification.send(
+            "🔑 Code d'accès IST attribué",
+            `Votre code d'accès personnel : ${staffCode}. Utilisez-le pour vous connecter.`,
+            'notifications'
+          );
+        } catch (_) {}
+      }
       return { ok: true, user };
     },
 

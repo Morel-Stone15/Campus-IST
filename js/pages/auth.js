@@ -56,6 +56,78 @@
     });
   }
 
+  function showStaffCodeModal(user, onContinue) {
+    const roleLabels = {
+      enseignant: 'Enseignant / Corps professoral',
+      admin: 'Administration générale',
+      communication: 'Pôle Communication & Annonces',
+      chef: 'Chef de filière',
+      personnel: 'Personnel administratif & technique',
+    };
+    const roleTitle = roleLabels[user.role] || 'Collaborateur IST';
+    const code = user.staffCode || 'IST-STAFF-0000';
+
+    const s = ui.sheet({
+      title: 'Votre code d\'accès personnel',
+      body: `
+        <div style="text-align:center; padding:8px 0 16px;">
+          <div class="ic-box lg tone-blue" style="margin:0 auto 12px; width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#ebf5ff; color:#1e40af;">
+            ${icon('key')}
+          </div>
+          <h3 style="margin:0 0 6px; font-size:18px;">Bienvenue, ${ui.esc(user.civilite ? user.civilite + ' ' : '')}${ui.esc(user.prenom)} !</h3>
+          <p class="muted small" style="margin:0 0 16px;">Votre inscription en tant que <b>${ui.esc(roleTitle)}</b> a été validée avec succès.</p>
+
+          <div style="background:#f8fafc; border:2px dashed #2563eb; border-radius:14px; padding:18px; margin-bottom:16px;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#2563eb; margin-bottom:6px;">Votre code d'accès unique & aléatoire</div>
+            <div style="font-family:monospace, 'Courier New', Courier; font-size:26px; font-weight:800; letter-spacing:3px; color:#0f172a;" id="modal-staff-code">${ui.esc(code)}</div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-staff-code" style="margin-top:12px; display:inline-flex; align-items:center; gap:6px;">
+              ${icon('copy')} <span>Copier mon code</span>
+            </button>
+          </div>
+
+          <div class="info-box tone-blue" style="text-align:left; font-size:13px; line-height:1.4;">
+            ${icon('bell')}
+            <div>
+              <b>Code transmis dans vos notifications !</b><br>
+              Ce code a également été envoyé dans l'onglet <b>Notifications</b> de votre espace et sur votre téléphone. Vous pouvez vous en servir à tout moment comme identifiant de connexion.
+            </div>
+          </div>
+        </div>
+      `,
+      footer: `
+        <button class="btn btn-primary btn-block btn-lg" id="btn-enter-workspace" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+          <span>Accéder à mon espace de travail</span> ${icon('arrowRight')}
+        </button>
+      `,
+      onClose: () => {
+        onContinue && onContinue();
+      },
+    });
+
+    const copyBtn = s.el.querySelector('#btn-copy-staff-code');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(code);
+          copyBtn.querySelector('span').textContent = 'Code copié !';
+          ui.toast('Code d\'accès copié dans le presse-papier !', 'success');
+          setTimeout(() => {
+            if (copyBtn && copyBtn.querySelector('span')) copyBtn.querySelector('span').textContent = 'Copier mon code';
+          }, 3000);
+        } catch (_) {
+          ui.toast(`Code d'accès : ${code}`, 'info');
+        }
+      });
+    }
+
+    const enterBtn = s.el.querySelector('#btn-enter-workspace');
+    if (enterBtn) {
+      enterBtn.addEventListener('click', () => {
+        s.close();
+      });
+    }
+  }
+
   IST.authPages = {
     /* ---------- Bienvenue ---------- */
     welcome: {
@@ -386,6 +458,13 @@
             personnel:     'annuaire',
             etudiant:      'classe',
           }[r.user.role] || 'home';
+
+          if (r.user.staffCode) {
+            showStaffCodeModal(r.user, () => {
+              location.hash = '#/' + landing;
+            });
+            return;
+          }
           location.hash = '#/' + landing;
         });
       },
@@ -565,6 +644,13 @@
             personnel:     'annuaire',
             etudiant:      'classe',
           }[r.user.role] || 'home';
+
+          if (r.user.staffCode) {
+            showStaffCodeModal(r.user, () => {
+              location.hash = '#/' + landing;
+            });
+            return;
+          }
           location.hash = '#/' + landing;
         });
 

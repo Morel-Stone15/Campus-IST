@@ -387,6 +387,24 @@
       allUsers.push(newUser);
       auth.saveUsers(allUsers);
 
+      db.notify({
+        to: newUser.id,
+        type: 'system',
+        icon: 'key',
+        link: 'profil',
+        title: `🔑 Votre code d'accès personnel : ${codeUpper}`,
+        body: `Bienvenue à l'IST ! L'administration a créé votre compte. Votre code d'accès aléatoire et unique est : ${codeUpper}. Utilisez-le pour vous connecter directement à votre espace de travail.`,
+      });
+      if (IST.pwaNotification && IST.pwaNotification.isSupported()) {
+        try {
+          IST.pwaNotification.send(
+            "🔑 Code d'accès IST attribué",
+            `Votre code d'accès personnel : ${codeUpper}. Utilisez-le pour vous connecter.`,
+            'notifications'
+          );
+        } catch (_) {}
+      }
+
       ui.busy(btn, false);
       s.close();
 
