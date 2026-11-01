@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: campus-plus
+    runtime: python
+    plan: free
+    buildCommand: pip install -r campus-plus/requirements.txt
+    startCommand: cd campus-plus && python render_start.py
+    healthCheckPath: /health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: INITIAL_ADMIN_EMAIL
+        sync: false
+      - key: INITIAL_ADMIN_PASSWORD
+        sync: false

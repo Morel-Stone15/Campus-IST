@@ -5,9 +5,11 @@
 (function () {
   window.IST = window.IST || {};
 
-  const API_BASE = window.location.origin.includes('5000') || window.location.origin.includes('8080')
-    ? `${window.location.origin}/api/v1`
-    : 'http://localhost:5000/api/v1';
+  const API_BASE = window.IST_API_BASE || (
+    window.location.protocol === 'file:'
+      ? 'http://localhost:5000/api/v1'
+      : `${window.location.origin}/api/v1`
+  );
 
   const TOKEN_KEY = 'istc_jwt_token';
   const REFRESH_KEY = 'istc_jwt_refresh';

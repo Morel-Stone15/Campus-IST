@@ -36,6 +36,14 @@ Les contenus partagés sont enregistrés dans la base SQLite du PC hôte. Ce PC 
 
 ---
 
+## Déploiement sur Render
+
+Le fichier `render.yaml` configure le service web Flask. Dans Render, choisissez **New + → Blueprint**, puis le dépôt GitHub Campus-IST. Renseignez les valeurs demandées pour `DATABASE_URL`, `INITIAL_ADMIN_EMAIL` et `INITIAL_ADMIN_PASSWORD` ; l'adresse de la base doit être son URL PostgreSQL interne. Les clés `SECRET_KEY` et `JWT_SECRET_KEY` sont générées par Render.
+
+Le service déploie à la fois l'interface et l'API sur la même origine HTTPS. N'utilisez pas GitHub Pages pour l'interface dans cette configuration : il pointerait vers GitHub au lieu de l'API Render. Après déploiement, vérifiez `https://VOTRE-SERVICE.onrender.com/health`, puis connectez-vous avec l'adresse administrateur et le mot de passe que vous avez configurés dans Render. Ne communiquez jamais `DATABASE_URL` ni les clés secrètes.
+
+---
+
 ## 🌐 Endpoints de l'application
 
 - **Application Web / Mobile** : `http://localhost:5000/`

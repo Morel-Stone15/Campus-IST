@@ -1,5 +1,5 @@
 /* Service worker : met l'application en cache pour l'utiliser hors connexion. */
-const CACHE = 'campus-plus-v4';
+const CACHE = 'campus-plus-v5';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css', 'assets/icon.svg',
   'js/config.js', 'js/icons.js', 'js/ui.js', 'js/data.js', 'js/api.js', 'js/store.js', 'js/app.js',
