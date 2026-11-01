@@ -12,8 +12,13 @@
 *.sqlite3
 
 campus-plus/instance/
+campus-plus/instance/db_status.txt
 app/uploads/
 campus-plus/app/uploads/
+
+# Log files (directory kept via logs/.gitkeep)
+campus-plus/logs/*.log
+campus-plus/logs/*.log.*
 
 build/
 dist/

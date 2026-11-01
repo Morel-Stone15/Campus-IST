@@ -30,6 +30,18 @@ def create_app(config_name: str = "default") -> Flask:
     app.config.from_object(config_map[config_name])
     app.url_map.strict_slashes = False
 
+    # ── Logging (must be set up early) ───────────────────────────────────────
+    from app.utils.logging import setup_logging, register_request_hooks
+    setup_logging(app)
+    register_request_hooks(app)
+
+    # ── Database URL resolution (PostgreSQL → SQLite fallback if needed) ──────
+    from app.db_fallback import resolve_database_url
+    resolved_db_url = resolve_database_url(
+        app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///campus.db")
+    )
+    app.config["SQLALCHEMY_DATABASE_URI"] = resolved_db_url
+
     # ── Initialise extensions ────────────────────────────────────────────────
     db.init_app(app)
     migrate.init_app(app, db)
@@ -60,7 +72,13 @@ def create_app(config_name: str = "default") -> Flask:
     # ── Health-check route ────────────────────────────────────────────────────
     @app.route("/health")
     def health():
-        return jsonify({"status": "ok", "service": "campus-plus-api"}), 200
+        from app.db_fallback import get_status_info
+        db_info = get_status_info()
+        return jsonify({
+            "status": "ok",
+            "service": "campus-plus-api",
+            "database": db_info,
+        }), 200
 
     # ── Frontend static files serving ─────────────────────────────────────────
     # Allows opening the complete frontend and backend on a single server URL

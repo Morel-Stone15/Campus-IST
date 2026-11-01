@@ -10,7 +10,7 @@ services:
       - key: FLASK_ENV
         value: production
       - key: DATABASE_URL
-        sync: false
+        sync: false          # Set in Render Dashboard → PostgreSQL connection string
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY
@@ -19,3 +19,18 @@ services:
         sync: false
       - key: INITIAL_ADMIN_PASSWORD
         sync: false
+      # ── Logging ────────────────────────────────────────────────────────────
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_TO_FILE
+        value: "0"            # Render captures stderr; file logging optional
+      # ── Database fallback tuning ───────────────────────────────────────────
+      - key: DB_PROBE_TIMEOUT
+        value: "5"            # seconds per PostgreSQL probe attempt
+      - key: DB_PROBE_RETRIES
+        value: "2"            # attempts before falling back to SQLite
+      # ── Gunicorn ──────────────────────────────────────────────────────────
+      - key: GUNICORN_WORKERS
+        value: "2"
+      - key: GUNICORN_TIMEOUT
+        value: "120"
