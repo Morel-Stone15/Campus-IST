@@ -356,66 +356,139 @@
     async register(d) {
       const email = d.email.trim().toLowerCase();
       if (auth.findByEmail(email)) return { ok: false, field: 'email', error: 'Un compte existe déjà avec cette adresse email.' };
+
+      const identity = d.identity || 'etudiant';
+      let role = 'etudiant';
+      if (identity === 'enseignant') role = 'enseignant';
+      else if (identity === 'personnel') role = 'personnel';
+      else if (identity === 'admin') {
+        const sAdmin = (d.service_admin || '').toLowerCase();
+        role = sAdmin.includes('communication') ? 'communication' : 'admin';
+      }
+
+      // Code d'accès personnel pour tout collaborateur / enseignant / admin
+      let staffCode = '';
+      if (role !== 'etudiant') {
+        const pfxMap = {
+          admin: 'ADM',
+          communication: 'COM',
+          chef: 'CHF',
+          enseignant: 'ENS',
+          personnel: 'PER',
+        };
+        const pfx = pfxMap[role] || 'STF';
+        const num = Math.floor(1000 + Math.random() * 9000);
+        staffCode = `IST-${pfx}-${num}`;
+      }
+
+      const phone = (d.phone_etudiant || d.phone_prof || d.phone_perso || d.phone_admin || d.phone || '').trim();
+      const civilite = d.titre_prof || d.titre_perso || d.titre_admin || d.civilite || '';
+      const fonction = (d.fonction_prof || d.fonction_perso || d.fonction_admin || d.fonction || '').trim();
+      const moduleName = (d.module_prof || d.module || '').trim();
+      const dureeModule = (d.duree_prof || d.dureeModule || '').trim();
+      const service = (d.service_perso || d.service_admin || d.service || '').trim();
+      const classes = d.classes || [];
+
       let apiUser = null;
       if (location.protocol !== 'file:' && window.IST && window.IST.api && window.IST.api.auth) {
-        const result = await window.IST.api.auth.register({
+        try {
+          const apiRoleMap = {
+            etudiant: 'student',
+            enseignant: 'teacher',
+            personnel: 'staff',
+            communication: 'staff',
+            admin: 'admin',
+          };
+          const result = await window.IST.api.auth.register({
             email,
             username: email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || ('user_' + Date.now()),
             password: d.password,
             first_name: d.prenom.trim(),
             last_name: d.nom.trim(),
-            role: 'student',
-            student_number: 'IST' + Date.now().toString().slice(-6),
-            level: d.niveau,
-            phone: d.phone || ''
+            role: apiRoleMap[role] || 'student',
+            student_number: role === 'etudiant' ? ('IST' + Date.now().toString().slice(-6)) : undefined,
+            employee_number: staffCode || undefined,
+            level: role === 'etudiant' ? d.niveau : undefined,
+            phone: phone,
+            specialty: fonction || moduleName || undefined,
           });
-        if (!result.ok) return { ok: false, field: 'email', error: result.error };
-        apiUser = result.user;
+          if (result.ok && result.user) apiUser = result.user;
+        } catch (_) {}
       }
+
       const user = {
         id: apiUser ? apiUser.id : uid(),
-        prenom: d.prenom.trim(), nom: d.nom.trim(), email,
-        filiere: d.filiere, niveau: d.niveau, phone: '',
-        role: 'etudiant',
+        prenom: d.prenom.trim(),
+        nom: d.nom.trim(),
+        email,
+        phone,
+        role,
+        civilite,
+        titre: civilite,
+        fonction,
+        module: moduleName,
+        dureeModule,
+        service,
+        staffCode: staffCode || undefined,
+        classes,
+        filiere: role === 'etudiant' ? (d.filiere || '') : '',
+        niveau: role === 'etudiant' ? (d.niveau || '') : '',
         password: await hash(email + '|' + d.password),
         createdAt: new Date().toISOString(),
-        readNotifs: [], events: [], prefs: defaultPrefs(), avatar: null,
+        readNotifs: [],
+        events: [],
+        prefs: defaultPrefs(),
+        avatar: null,
       };
+
       const us = auth.users();
       us.push(user);
       if (!auth.saveUsers(us)) return { ok: false, error: "Impossible d'enregistrer le compte." };
       auth.setSession(user.id, true);
+
       if (apiUser) {
-        const synced = await db.syncRemote(user);
-        if (!synced.ok) {
-          auth.logout();
-          IST.api.clearTokens();
-          return { ok: false, error: synced.error };
-        }
+        try {
+          const synced = await db.syncRemote(user);
+          if (!synced.ok) {
+            auth.logout();
+            IST.api.clearTokens();
+            return { ok: false, error: synced.error };
+          }
+        } catch (_) {}
       }
+
+      let welcomeBody = 'Ton compte est prêt. Découvre ton emploi du temps, les actualités et les services du campus.';
+      if (role === 'enseignant') {
+        welcomeBody = `Bienvenue au corps professoral ! Module : ${moduleName || 'Non spécifié'}${dureeModule ? ` (${dureeModule})` : ''}. Vos classes virtuelles et espaces de devoirs sont disponibles.`;
+      } else if (role === 'personnel') {
+        welcomeBody = `Bienvenue dans l'équipe IST ! Service : ${service || 'Général'} · Fonction : ${fonction || 'Personnel'}.`;
+      } else if (role === 'admin' || role === 'communication') {
+        welcomeBody = `Bienvenue dans l'administration IST ! Service : ${service || 'Direction'}. Votre console de gestion est opérationnelle.`;
+      }
+
       db.notify({
         to: user.id, type: 'system', icon: 'sparkles', link: 'home',
-        title: `Bienvenue sur Campus+, ${user.prenom} !`,
-        body: 'Ton compte est prêt. Découvre ton emploi du temps, les actualités et les services du campus.',
+        title: `Bienvenue sur Campus+, ${civilite ? civilite + ' ' : ''}${user.prenom} !`,
+        body: welcomeBody,
       });
 
-      // Notifier les enseignants de la classe que l'étudiant vient de rejoindre
-      try {
-        const classId = IST.school.classId(user.filiere, user.niveau);
-        if (classId) {
-          const teachers = db.all('posts').length >= 0
-            ? auth.users().filter((u) => (u.classes || []).includes(classId) || u.role === 'chef')
-            : [];
-          teachers.forEach((teacher) => {
-            db.notify({
-              to: teacher.id, type: 'system', icon: 'userPlus',
-              link: 'classes/' + classId,
-              title: `Nouvel étudiant inscrit dans ${classId}`,
-              body: `${user.prenom} ${user.nom} vient de rejoindre votre classe (${user.filiere} · ${user.niveau}).`,
+      // Notifier les enseignants de la classe si c'est un étudiant
+      if (role === 'etudiant') {
+        try {
+          const classId = IST.school.classId(user.filiere, user.niveau);
+          if (classId) {
+            const teachers = auth.users().filter((u) => (u.classes || []).includes(classId) || u.role === 'chef' || u.role === 'enseignant');
+            teachers.forEach((teacher) => {
+              db.notify({
+                to: teacher.id, type: 'system', icon: 'userPlus',
+                link: 'classes/' + classId,
+                title: `Nouvel étudiant inscrit dans ${classId}`,
+                body: `${user.prenom} ${user.nom} vient de rejoindre votre classe (${user.filiere} · ${user.niveau}).`,
+              });
             });
-          });
-        }
-      } catch (_) { /* ignore enrollment notification errors */ }
+          }
+        } catch (_) { /* ignore enrollment notification errors */ }
+      }
 
       return { ok: true, user };
     },

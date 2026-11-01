@@ -137,20 +137,107 @@
     /* ---------- Inscription ---------- */
     register: {
       render: () => layout('register', `
-        <div class="auth-head"><h2>Créer un compte</h2><p class="text-2">Ça prend moins d'une minute.</p></div>
+        <div class="auth-head"><h2>Créer un compte</h2><p class="text-2">Renseigne tes informations pour créer ton espace de travail.</p></div>
         <form class="stack-lg" novalidate>
-          <p class="form-section-title">Identité</p>
+          <p class="form-section-title">Identité personnelle</p>
           <div class="form-row">
             ${ui.field({ name: 'prenom', label: 'Prénom', icon: 'user', placeholder: 'Herlie', autocomplete: 'given-name', required: true })}
             ${ui.field({ name: 'nom', label: 'Nom', placeholder: 'NZAMBA', autocomplete: 'family-name', required: true })}
           </div>
           ${ui.field({ name: 'email', label: 'Adresse email', type: 'email', icon: 'mail', placeholder: 'herl0ienzamba@gmail.com', autocomplete: 'email', required: true,
-            hint: cfg.allowedEmailDomain ? `Utilise ton adresse de l'école (@${cfg.allowedEmailDomain}).` : 'Elle servira à te connecter.' })}
-          <p class="form-section-title">Études</p>
-          ${ui.field({ name: 'filiere', label: 'Filière', type: 'select', icon: 'cap', placeholder: 'Choisis ta filière…', options: IST.school.filiereOptions(), required: true })}
-          ${ui.field({ name: 'niveau', label: 'Niveau', type: 'select', icon: 'award', placeholder: "Choisis d'abord ta filière", options: [], required: true })}
-          <div class="info-box" data-room-preview hidden></div>
-          <p class="form-section-title">Sécurité</p>
+            hint: cfg.allowedEmailDomain ? `Utilise ton adresse de l'école (@${cfg.allowedEmailDomain}).` : 'Elle servira d\'identifiant de connexion.' })}
+
+          <p class="form-section-title">Identité & Statut sur le campus</p>
+          ${ui.field({
+            name: 'identity',
+            label: 'Identité / Rôle à l’IST',
+            type: 'select',
+            icon: 'award',
+            value: 'etudiant',
+            required: true,
+            options: [
+              ['etudiant', 'Étudiant(e)'],
+              ['enseignant', 'Enseignant(e) / Professeur'],
+              ['personnel', 'Membre du personnel'],
+              ['admin', 'Membre de l’administration'],
+            ],
+            hint: 'Sélectionne ton statut : les champs ci-dessous s’ajustent instantanément.'
+          })}
+
+          <!-- Bloc Étudiant -->
+          <div data-role-block="etudiant">
+            <p class="form-section-title">Études & Formation</p>
+            <div class="form-row">
+              ${ui.field({ name: 'filiere', label: 'Filière', type: 'select', icon: 'cap', placeholder: 'Choisis ta filière…', options: IST.school.filiereOptions(), required: true })}
+              ${ui.field({ name: 'niveau', label: 'Niveau', type: 'select', icon: 'award', placeholder: "Choisis d'abord ta filière", options: [], required: true })}
+            </div>
+            ${ui.field({ name: 'phone_etudiant', label: 'Numéro de téléphone', type: 'tel', icon: 'phone', placeholder: '074 00 00 00', optional: true })}
+            <div class="info-box" data-room-preview hidden></div>
+          </div>
+
+          <!-- Bloc Enseignant -->
+          <div data-role-block="enseignant" hidden>
+            <p class="form-section-title">Profil Enseignant & Enseignements</p>
+            <div class="form-row">
+              ${ui.field({ name: 'titre_prof', label: 'Titre / Civilité', type: 'select', options: [['Dr', 'Dr.'], ['Pr', 'Pr.'], ['M.', 'M.'], ['Mme', 'Mme'], ['Ing.', 'Ingénieur']], value: 'Dr' })}
+              ${ui.field({ name: 'fonction_prof', label: 'Fonction / Spécialité', placeholder: 'Ex. Enseignant-chercheur, Vacataire…', required: true })}
+            </div>
+            <div class="form-row">
+              ${ui.field({ name: 'module_prof', label: 'Module / Matière enseignée', placeholder: 'Ex. Algorithmique, Réseaux, Comptabilité…', required: true })}
+              ${ui.field({ name: 'duree_prof', label: 'Durée du module', placeholder: 'Ex. 45h, 60h, Semestre 1…', required: true })}
+            </div>
+            ${ui.field({ name: 'phone_prof', label: 'Numéro de téléphone', type: 'tel', icon: 'phone', placeholder: '077 12 34 56', required: true })}
+            <div class="field" data-field="classes_prof">
+              <label>Classes & Niveaux d'intervention</label>
+              <p class="muted small" style="margin:4px 0 8px;">Coche les niveaux où tu dispenses ce cours :</p>
+              ${ui.classPicker([])}
+              <small class="err"></small>
+            </div>
+          </div>
+
+          <!-- Bloc Membre du Personnel -->
+          <div data-role-block="personnel" hidden>
+            <p class="form-section-title">Poste & Service du Personnel</p>
+            <div class="form-row">
+              ${ui.field({ name: 'titre_perso', label: 'Titre / Civilité', type: 'select', options: [['M.', 'M.'], ['Mme', 'Mme'], ['Mlle', 'Mlle'], ['Dr', 'Dr']], value: 'M.' })}
+              ${ui.field({ name: 'fonction_perso', label: 'Titre & Fonction', placeholder: 'Ex. Technicien réseau, Secrétaire, Assistant…', required: true })}
+            </div>
+            <div class="form-row">
+              ${ui.field({ name: 'service_perso', label: 'Service de travail', type: 'select', options: [
+                ['Scolarité & Inscriptions', 'Scolarité & Inscriptions'],
+                ['Bibliothèque & Documentation', 'Bibliothèque & Documentation'],
+                ['Service Informatique & Réseau', 'Service Informatique & Réseau'],
+                ['Comptabilité & Finances', 'Comptabilité & Finances'],
+                ['Maintenance & Logistique', 'Maintenance & Logistique'],
+                ['Ressources Humaines', 'Ressources Humaines'],
+                ['Accueil & Sécurité', 'Accueil & Sécurité'],
+                ['Autre service', 'Autre service…']
+              ], value: 'Scolarité & Inscriptions' })}
+              ${ui.field({ name: 'phone_perso', label: 'Numéro de téléphone', type: 'tel', icon: 'phone', placeholder: '074 00 00 00', required: true })}
+            </div>
+          </div>
+
+          <!-- Bloc Membre de l'Administration -->
+          <div data-role-block="admin" hidden>
+            <p class="form-section-title">Responsabilité Administrative</p>
+            <div class="form-row">
+              ${ui.field({ name: 'titre_admin', label: 'Titre / Civilité', type: 'select', options: [['M.', 'M.'], ['Mme', 'Mme'], ['Dr', 'Dr'], ['Pr', 'Pr']], value: 'M.' })}
+              ${ui.field({ name: 'fonction_admin', label: 'Poste / Fonction', placeholder: 'Ex. Directeur des Études, SG, Responsable Pôle…', required: true })}
+            </div>
+            <div class="form-row">
+              ${ui.field({ name: 'service_admin', label: 'Pôle / Département', type: 'select', options: [
+                ['Direction Générale', 'Direction Générale'],
+                ['Direction des Études', 'Direction des Études'],
+                ['Pôle Communication & Événements', 'Pôle Communication & Événements'],
+                ['Secrétariat Général', 'Secrétariat Général'],
+                ['Direction des Examens & Concours', 'Direction des Examens & Concours'],
+                ['Autre direction', 'Autre direction…']
+              ], value: 'Direction des Études' })}
+              ${ui.field({ name: 'phone_admin', label: 'Numéro de téléphone', type: 'tel', icon: 'phone', placeholder: '077 00 00 00', required: true })}
+            </div>
+          </div>
+
+          <p class="form-section-title">Sécurité de votre compte</p>
           <div class="field" data-field="password-wrap">
             ${ui.field({ name: 'password', label: 'Mot de passe', type: 'password', icon: 'lock', placeholder: '8 caractères minimum', autocomplete: 'new-password', required: true,
               hint: '8 caractères minimum, avec au moins une lettre et un chiffre.' })}
@@ -158,7 +245,7 @@
           </div>
           ${ui.field({ name: 'confirm', label: 'Confirmer le mot de passe', type: 'password', icon: 'lock', placeholder: 'Retape ton mot de passe', autocomplete: 'new-password', required: true })}
           <div class="field" data-field="terms">
-            <label class="check"><input type="checkbox" name="terms">J'ai lu et j'accepte le règlement intérieur de l'IST et la charte des étudiants.</label>
+            <label class="check"><input type="checkbox" name="terms">J'ai lu et j'accepte le règlement intérieur de l'IST et la charte d'utilisation.</label>
             <small class="err"></small>
           </div>
           <div class="form-alert" role="alert" hidden></div>
@@ -168,26 +255,57 @@
       mount(el) {
         const f = el.querySelector('form');
         bindStrength(f);
-        const rules = {
+
+        const idSelect = f.querySelector('select[name=identity]');
+        const syncIdentity = () => {
+          const currentId = idSelect ? idSelect.value : 'etudiant';
+          f.querySelectorAll('[data-role-block]').forEach((b) => {
+            b.hidden = b.dataset.roleBlock !== currentId;
+          });
+        };
+        idSelect && idSelect.addEventListener('change', syncIdentity);
+        syncIdentity();
+
+        const rulesCommon = {
           prenom: (v) => (v.trim().length >= 2 ? '' : 'Entre ton prénom.'),
           nom: (v) => (v.trim().length >= 2 ? '' : 'Entre ton nom.'),
           email: (v) => auth.emailError(v),
-          filiere: (v) => (v ? '' : 'Choisis ta filière.'),
-          niveau: (v) => (v ? '' : 'Choisis ton niveau.'),
           password: (v) => auth.passwordError(v),
           confirm: (v, d) => (!v ? 'Confirme ton mot de passe.' : v === d.password ? '' : 'Les mots de passe ne correspondent pas.'),
           terms: (v) => (v ? '' : 'Tu dois accepter le règlement pour continuer.'),
         };
-        const check = (name) => {
-          const d = ui.formData(f);
-          const msg = rules[name](d[name] || '', d);
+
+        const checkField = (name, d) => {
+          const id = d.identity || 'etudiant';
+          let msg = '';
+          if (rulesCommon[name]) {
+            msg = rulesCommon[name](d[name] || '', d);
+          } else if (id === 'etudiant') {
+            if (name === 'filiere') msg = d.filiere ? '' : 'Choisis ta filière.';
+            if (name === 'niveau') msg = d.niveau ? '' : 'Choisis ton niveau.';
+          } else if (id === 'enseignant') {
+            if (name === 'fonction_prof') msg = (d.fonction_prof || '').trim() ? '' : 'Entre ta fonction ou spécialité.';
+            if (name === 'module_prof') msg = (d.module_prof || '').trim() ? '' : 'Entre le module enseigné.';
+            if (name === 'duree_prof') msg = (d.duree_prof || '').trim() ? '' : 'Entre la durée du module (ex: 45h).';
+            if (name === 'phone_prof') msg = (d.phone_prof || '').trim() ? '' : 'Entre ton numéro de téléphone.';
+          } else if (id === 'personnel') {
+            if (name === 'fonction_perso') msg = (d.fonction_perso || '').trim() ? '' : 'Entre ton titre et fonction.';
+            if (name === 'phone_perso') msg = (d.phone_perso || '').trim() ? '' : 'Entre ton numéro de téléphone.';
+          } else if (id === 'admin') {
+            if (name === 'fonction_admin') msg = (d.fonction_admin || '').trim() ? '' : 'Entre ton poste ou fonction.';
+            if (name === 'phone_admin') msg = (d.phone_admin || '').trim() ? '' : 'Entre ton numéro de téléphone.';
+          }
           ui.setErr(f, name, msg);
           return !msg;
         };
+
         f.addEventListener('focusout', (e) => {
           const n = e.target.name;
-          if (rules[n] && n !== 'terms' && e.target.value) check(n);
+          if (n && n !== 'terms' && e.target.value) {
+            checkField(n, ui.formData(f));
+          }
         });
+
         const lvl = f.querySelector('select[name=niveau]');
         const preview = f.querySelector('[data-room-preview]');
         function showRoom() {
@@ -196,32 +314,68 @@
           preview.hidden = !(d.filiere && d.niveau);
           preview.innerHTML = `${icon('door')}<div><b>${room ? `Ta salle de cours : ${ui.esc(room)}` : 'Salle pas encore attribuée'}</b>${room ? "D'après la répartition des salles de la Direction des études." : 'La Direction des études la communiquera prochainement.'}</div>`;
         }
+
         f.addEventListener('change', (e) => {
           const n = e.target.name;
           if (n === 'filiere') ui.fillLevels(lvl, e.target.value);
           if (n === 'filiere' || n === 'niveau') showRoom();
-          if (n === 'filiere' || n === 'niveau' || n === 'terms') check(n);
+          if (['filiere', 'niveau', 'terms', 'identity'].includes(n)) checkField(n, ui.formData(f));
         });
+
         f.addEventListener('submit', async (e) => {
           e.preventDefault();
           showAlert(f, '');
-          const ok = Object.keys(rules).map(check).every(Boolean);
+          const d = ui.formData(f);
+          const id = d.identity || 'etudiant';
+
+          // Pour les enseignants : collecter les classes sélectionnées
+          if (id === 'enseignant') {
+            d.classes = [...f.querySelectorAll('input[name=classes]:checked')].map((x) => x.value);
+          }
+
+          const fieldsToValidate = ['prenom', 'nom', 'email', 'password', 'confirm', 'terms'];
+          if (id === 'etudiant') fieldsToValidate.push('filiere', 'niveau');
+          else if (id === 'enseignant') fieldsToValidate.push('fonction_prof', 'module_prof', 'duree_prof', 'phone_prof');
+          else if (id === 'personnel') fieldsToValidate.push('fonction_perso', 'phone_perso');
+          else if (id === 'admin') fieldsToValidate.push('fonction_admin', 'phone_admin');
+
+          const ok = fieldsToValidate.map((name) => checkField(name, d)).every(Boolean);
           if (!ok) {
             const first = f.querySelector('.field.invalid input, .field.invalid select');
             first && first.focus();
             return;
           }
+
           const btn = f.querySelector('[type=submit]');
           ui.busy(btn, true);
-          const r = await auth.register(ui.formData(f));
+          const r = await auth.register(d);
           ui.busy(btn, false);
           if (!r.ok) {
             if (r.field) ui.setErr(f, r.field, r.error);
             else showAlert(f, r.error);
             return;
           }
-          ui.toast(`Compte créé ! Bienvenue, ${r.user.prenom}.`, 'success');
-          location.hash = '#/home';
+
+          const roleMsg = {
+            etudiant: `Compte étudiant créé ! Bienvenue, ${r.user.prenom}.`,
+            enseignant: `Compte enseignant créé ! Bienvenue ${r.user.civilite ? r.user.civilite + ' ' : ''}${r.user.nom}.${r.user.staffCode ? ` Code d'accès : ${r.user.staffCode}` : ''}`,
+            personnel: `Compte personnel créé ! Bienvenue ${r.user.prenom}.${r.user.staffCode ? ` Code d'accès : ${r.user.staffCode}` : ''}`,
+            communication: `Compte communication créé ! Bienvenue ${r.user.prenom}.${r.user.staffCode ? ` Code : ${r.user.staffCode}` : ''}`,
+            admin: `Compte administrateur créé ! Bienvenue ${r.user.prenom}.${r.user.staffCode ? ` Code d'accès : ${r.user.staffCode}` : ''}`,
+          }[r.user.role] || `Compte créé ! Bienvenue, ${r.user.prenom}.`;
+
+          ui.toast(roleMsg, 'success');
+
+          // Redirection directe vers l'environnement spécifique au profil
+          const landing = {
+            admin:         'admin',
+            communication: 'actualites',
+            enseignant:    'classes',
+            chef:          'filiere',
+            personnel:     'annuaire',
+            etudiant:      'classe',
+          }[r.user.role] || 'home';
+          location.hash = '#/' + landing;
         });
       },
     },

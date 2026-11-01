@@ -39,7 +39,13 @@
         </div>
         ${ui.field({ name: 'email', label: 'Adresse email', type: 'email', icon: 'mail', value: u.email, readonly: true, hint: "L'adresse email sert d'identifiant et ne peut pas être modifiée." })}
         ${ui.field({ name: 'phone', label: 'Téléphone', type: 'tel', icon: 'phone', value: u.phone, optional: true, placeholder: '+241 …', autocomplete: 'tel' })}
-        ${isAdmin ? '' : `
+        ${isAdmin ? `
+          <div class="form-row">
+            ${ui.field({ name: 'fonction', label: 'Fonction / Poste', value: u.fonction || '', optional: true, placeholder: 'Ex. Enseignant-chercheur, Secrétaire…' })}
+            ${u.role === 'enseignant' ? ui.field({ name: 'module', label: 'Module enseigné', value: u.module || '', optional: true, placeholder: 'Ex. Algorithmique…' }) : ui.field({ name: 'service', label: 'Service / Pôle', value: u.service || '', optional: true, placeholder: 'Ex. Scolarité, Informatique…' })}
+          </div>
+          ${u.role === 'enseignant' ? ui.field({ name: 'dureeModule', label: 'Durée du module', value: u.dureeModule || '', optional: true, placeholder: 'Ex. 45h, Semestre 1…' }) : ''}
+        ` : `
           ${ui.field({ name: 'filiere', label: 'Filière', type: 'select', options: IST.school.filiereOptions(), value: u.filiere })}
           ${ui.field({ name: 'niveau', label: 'Niveau', type: 'select', options: IST.school.levelOptions(u.filiere), value: u.niveau })}`}
       </form>`,
@@ -58,7 +64,14 @@
       ui.setErr(f, 'nom', nErr);
       if (pErr || nErr) return;
       const patch = { prenom: d.prenom.trim(), nom: d.nom.trim(), phone: (d.phone || '').trim() };
-      if (!isAdmin) Object.assign(patch, { filiere: d.filiere, niveau: d.niveau });
+      if (!isAdmin) {
+        Object.assign(patch, { filiere: d.filiere, niveau: d.niveau });
+      } else {
+        if (d.fonction !== undefined) patch.fonction = d.fonction.trim();
+        if (d.module !== undefined) patch.module = d.module.trim();
+        if (d.dureeModule !== undefined) patch.dureeModule = d.dureeModule.trim();
+        if (d.service !== undefined) patch.service = d.service.trim();
+      }
       auth.update(u.id, patch);
       s.close();
       ui.toast('Profil mis à jour.', 'success');
@@ -142,9 +155,12 @@
           <p class="muted small">${ui.esc(u.email)}</p>
           ${isAdmin ? '' : `<p class="small text-2">${ui.esc(u.filiere)}<br><span class="muted">${ui.esc((IST.school.find(u.filiere) || {}).poleName || '')}</span></p>`}
           ${isAdmin ? `<p class="small text-2">${chef ? `Chef de filière · ${ui.esc(chef.name)}` : ui.esc(u.fonction || IST.config.schoolName)}</p>
+          ${u.module ? `<p class="muted small" style="margin:4px 0 6px;">Module : <strong>${ui.esc(u.module)}</strong>${u.dureeModule ? ` (${ui.esc(u.dureeModule)})` : ''}</p>` : ''}
+          ${u.service ? `<p class="muted small" style="margin:4px 0 6px;">Service : <strong>${ui.esc(u.service)}</strong></p>` : ''}
+          ${u.staffCode ? `<div style="margin:6px 0;"><code style="font-size:12px;font-weight:700;color:var(--primary);background:var(--primary-50);padding:3px 8px;border-radius:6px;border:1px solid var(--primary-100);">${ui.esc(u.staffCode)}</code></div>` : ''}
           <div class="profile-facts">
-            <div><small>Classes</small><b>${(u.classes || []).length}</b></div>
-            <div><small>Filière</small><b>${chef ? ui.esc(chef.code) : '—'}</b></div>
+            <div><small>${u.role === 'enseignant' ? 'Classes' : 'Pôle'}</small><b>${u.role === 'enseignant' ? (u.classes || []).length : (u.service || 'IST')}</b></div>
+            <div><small>Filière</small><b>${chef ? ui.esc(chef.code) : (u.module ? 'Cours' : '—')}</b></div>
             <div><small>Membre depuis</small><b>${D.fmt(u.createdAt, { month: 'short', year: 'numeric' })}</b></div>
           </div>` : `<div class="profile-facts">
             <div><small>Niveau</small><b>${ui.esc(isAdmin ? '—' : u.niveau)}</b></div>

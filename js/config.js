@@ -34,8 +34,9 @@ IST.config = {
     chef: 'Chef de filière',
     admin: 'Administration',
     communication: 'Service Communication',
+    personnel: 'Membre du personnel',
   },
-  civilites: ['M.', 'Mme', 'Dr', 'Pr'],
+  civilites: ['M.', 'Mme', 'Mlle', 'Dr', 'Pr'],
 
   // Fichier audio de l'hymne (à déposer dans le dossier assets/).
   hymnUrl: 'assets/hymne.mp3',
