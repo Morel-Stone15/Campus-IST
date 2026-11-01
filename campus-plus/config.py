@@ -83,14 +83,12 @@ class ProductionConfig(BaseConfig):
     # Tighten CORS in production – override via env if needed
     CORS_ORIGINS: list = os.environ.get(
         "CORS_ORIGINS",
-        # GitHub Pages frontend + any custom domain
-        "https://morel-stone15.github.io,https://campusplus.example.com"
+        # GitHub Pages frontend + Render app domain
+        "https://morel-stone15.github.io,https://campus-ist.onrender.com"
     ).split(",")
     SQLALCHEMY_ENGINE_OPTIONS: dict = {
         "pool_pre_ping": True,
         "pool_recycle": 300,
-        "pool_size": 10,
-        "max_overflow": 20,
     }
 
 

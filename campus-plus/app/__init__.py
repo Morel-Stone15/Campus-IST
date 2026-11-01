@@ -42,13 +42,17 @@ def create_app(config_name: str = "default") -> Flask:
     )
     app.config["SQLALCHEMY_DATABASE_URI"] = resolved_db_url
 
+    # SQLite does not support connection pool options (pool_size, max_overflow)
+    if resolved_db_url.startswith("sqlite"):
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {}
+
     # ── Initialise extensions ────────────────────────────────────────────────
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
     CORS(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}})
 
-    # ── Register models (ensures they're known to SQLAlchemy) ────────────────
+    # ── Register models and ensure tables exist ───────────────────────────────
     with app.app_context():
         from app.models import (  # noqa: F401
             User, Student, Teacher,
@@ -59,6 +63,11 @@ def create_app(config_name: str = "default") -> Flask:
             Locker, LockerReservation, RoomReservation,
             Notification, HymnContent, AuditLog, AppData,
         )
+        try:
+            db.create_all()
+            _seed_initial_data(app)
+        except Exception as exc:
+            app.logger.error("Database schema init error: %s", exc, exc_info=True)
 
     # ── Register blueprints ───────────────────────────────────────────────────
     _register_blueprints(app)
@@ -231,4 +240,75 @@ def _register_error_handlers(app: Flask) -> None:
     @app.errorhandler(500)
     def internal_error(e):
         db.session.rollback()
-        return jsonify({"success": False, "message": "Internal server error"}), 500
+        app.logger.exception("Internal server error: %s", e)
+        return jsonify({
+            "success": False,
+            "message": "Erreur interne du serveur",
+            "error": str(e)
+        }), 500
+
+
+def _seed_initial_data(app: Flask) -> None:
+    """Seed minimal required data (admin account, departments, academic year) if empty."""
+    from app.models.user import User
+    from app.models.course import Department, AcademicYear
+    from datetime import date
+
+    try:
+        # 1. Departments
+        existing_codes = {d.code for d in Department.query.all()}
+        departments_data = [
+            {"name": "Informatique & Réseaux", "code": "INFO"},
+            {"name": "Génie Civil", "code": "GC"},
+            {"name": "Génie Électrique", "code": "GE"},
+            {"name": "Gestion & Comptabilité", "code": "GCOM"},
+            {"name": "Sciences de la Santé", "code": "SS"},
+        ]
+        for d in departments_data:
+            if d["code"] not in existing_codes:
+                db.session.add(Department(name=d["name"], code=d["code"]))
+
+        # 2. Academic Year
+        if not AcademicYear.query.filter_by(name="2025-2026").first():
+            db.session.add(AcademicYear(
+                name="2025-2026",
+                start_date=date(2025, 10, 1),
+                end_date=date(2026, 7, 31),
+                is_current=True,
+            ))
+
+        # 3. Initial Admin
+        admin_email = os.environ.get("INITIAL_ADMIN_EMAIL", "admin@ist.ga").strip().lower()
+        admin_pass = os.environ.get("INITIAL_ADMIN_PASSWORD", "AdminIST2025!")
+
+        if not User.query.filter_by(email=admin_email).first():
+            admin = User(
+                email=admin_email,
+                username="admin_ist",
+                first_name="Administrateur",
+                last_name="IST",
+                role="admin",
+                is_active=True,
+                is_verified=True,
+            )
+            admin.set_password(admin_pass)
+            db.session.add(admin)
+
+        if admin_email != "admin@ist.edu" and not User.query.filter_by(email="admin@ist.edu").first():
+            admin_edu = User(
+                email="admin@ist.edu",
+                username="admin_ist_edu",
+                first_name="Administrateur",
+                last_name="IST",
+                role="admin",
+                is_active=True,
+                is_verified=True,
+            )
+            admin_edu.set_password(admin_pass)
+            db.session.add(admin_edu)
+
+        db.session.commit()
+        app.logger.info("Base de données initialisée avec succès (admin: %s).", admin_email)
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning("Auto-seed initial data skipped: %s", exc)

@@ -10,8 +10,7 @@
   //   1. window.IST_API_BASE défini manuellement (déploiement custom)
   //   2. Protocole file:// → serveur local
   //   3. GitHub Pages (*.github.io) → URL Render configurée dans CAMPUS_API_URL
-  //   4. Même origine que le frontend (déploiement unifié Flask)
-  const RENDER_API_URL = window.CAMPUS_API_URL || 'https://campus-plus.onrender.com/api/v1';
+  const RENDER_API_URL = window.CAMPUS_API_URL || 'https://campus-ist.onrender.com/api/v1';
   const isGitHubPages = window.location.hostname.endsWith('.github.io');
 
   const API_BASE = window.IST_API_BASE || (
