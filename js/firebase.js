@@ -23,8 +23,9 @@
 
   /* ── Client REST Firestore (sans SDK lourd) ──────────────── */
   // Utilise l'API REST Firestore pour éviter d'importer 150 Ko de SDK.
+  const DATABASE_ID = 'default';
   const BASE = FB_CONFIGURED
-    ? `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`
+    ? `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/${DATABASE_ID}/documents`
     : null;
 
   // Nom du document racine partagé (une seule collection "campus")
