@@ -4,18 +4,16 @@
 
 // ── Version & Changelog ──────────────────────────────────────
 // ⚠️  Changer APP_VERSION à chaque déploiement !
-const APP_VERSION  = '8';
+const APP_VERSION  = '9';
 const CACHE        = 'campus-plus-v' + APP_VERSION;
 const PREV_CACHE   = 'campus-plus-v' + (Number(APP_VERSION) - 1);
 
 // Ce texte sera montré à l'utilisateur lors de la mise à jour
 const CHANGELOG = [
-  '🗓️ Emplois du temps : l'admin et les chefs de département peuvent déposer les plannings',
-  '🗺️ Plan interactif : la salle du cours est automatiquement surlignée et une notification est envoyée',
-  '👑 Chef de classe : l'enseignant peut nommer un délégué qui peut envoyer des documents dans la salle virtuelle',
-  '🖼️ Annonces : aperçu et redimensionnement automatique des images',
-  '⚙️ Admin : gestion des programmes UE, des services du campus et de l'identité IST',
-  '🧹 Base de données nettoyée : suppression des événements de test non réels',
+  '⚙️ Admin Système : modification complète des numéros d\'urgence, horaires et détails des services du campus',
+  '🏛️ Identité de l\'IST : personnalisation des coordonnées officielles (standard, fax, adresse, BP), devise et annuaire',
+  '✏️ Édition directe : modification instantanée depuis les pages Services et Identité de l\'IST',
+  '☁️ Synchronisation temps réel Firebase : partagée automatiquement sur tous les appareils',
 ];
 
 const FILES = [

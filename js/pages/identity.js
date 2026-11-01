@@ -6,6 +6,11 @@
 
   const fmt = (s) => (isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}` : '0:00');
 
+  function isAdmin() {
+    const u = IST.auth ? IST.auth.user() : null;
+    return !!(u && (u.role === 'admin' || (u.staffCode && u.staffCode.startsWith('IST-SYS'))));
+  }
+
   function syncUI() {
     const root = document.querySelector('[data-player]');
     if (!root || !audio) return;
@@ -48,13 +53,122 @@
     return IST.db.identity().lyrics.map((stanza) => `<p>${stanza.map(ui.esc).join('<br>')}</p>`).join('');
   }
 
+  /* ---------- Modal de modification de l'identité de l'IST ---------- */
+  function openEditIdentityModal(refreshCtx) {
+    const id = IST.db.identity();
+    const phone = id.phone || cfg.phone;
+    const fax = id.fax || cfg.fax;
+    const address = id.address || cfg.address;
+    const postalBox = id.postalBox || cfg.postalBox;
+    const motto = id.motto || "Plus qu'une école, une famille !";
+    const dirText = (id.directory || []).map(([n, r]) => `${n} : ${r}`).join('\n');
+    const valText = (id.values || []).map((v) => v[0]).join(', ');
+
+    const modal = ui.sheet({
+      title: "Modifier l'identité de l'IST",
+      body: `
+        <form id="edit-identity-form" class="admin-form stack-lg" novalidate>
+          <div class="info-box tone-purple">${icon('shield')}<div><b>Espace Admin Système</b>Vous pouvez modifier les coordonnées officielles, la devise, l'histoire et l'annuaire de l'école. Tous les étudiants et visiteurs verront les changements immédiatement.</div></div>
+          
+          <h4 class="h-sub">${icon('phone')} Coordonnées officielles</h4>
+          <div class="form-row">
+            ${ui.field({ name: 'phone', label: 'Téléphone standard', value: phone, placeholder: '+241 01 76 34 50', required: true })}
+            ${ui.field({ name: 'fax', label: 'Télécopie / Fax', value: fax, placeholder: '+241 01 76 34 51', optional: true })}
+          </div>
+          <div class="form-row">
+            ${ui.field({ name: 'address', label: 'Adresse physique', value: address, placeholder: "Complexe Universitaire d'Oloumi, Libreville", required: true })}
+            ${ui.field({ name: 'postalBox', label: 'Boîte postale', value: postalBox, placeholder: 'BP 1017 Libreville', required: true })}
+          </div>
+          ${ui.field({ name: 'motto', label: 'Devise / Slogan officiel', value: motto, placeholder: "Plus qu'une école, une famille !", required: true })}
+
+          <h4 class="h-sub" style="margin-top:16px;">${icon('building')} Annuaire des services du campus</h4>
+          ${ui.field({ name: 'directory', label: 'Services internes & rôles', type: 'textarea', rows: 5, value: dirText, hint: 'Une ligne par service au format : Nom du service : Rôle ou téléphone' })}
+
+          <h4 class="h-sub" style="margin-top:16px;">${icon('book')} Histoire & Valeurs</h4>
+          ${ui.field({ name: 'history', label: 'Notre histoire / Présentation', type: 'textarea', rows: 6, value: id.history || '', required: true })}
+          ${ui.field({ name: 'values', label: 'Nos valeurs (séparées par des virgules)', value: valText, hint: 'Exemple : Excellence, Rigueur, Innovation, Solidarité, Intégrité' })}
+        </form>
+      `,
+      footer: `
+        <button class="btn btn-ghost" data-close>Annuler</button>
+        <button class="btn btn-primary" type="submit" form="edit-identity-form">${icon('check')}Enregistrer l'identité</button>
+      `,
+      size: 'wide',
+    });
+
+    const f = modal.el.querySelector('#edit-identity-form');
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(f);
+      const d = Object.fromEntries(fd.entries());
+
+      const dirLines = (d.directory || '').split('\n').map((l) => l.trim()).filter(Boolean);
+      const parsedDir = dirLines.map((l) => {
+        const parts = l.split(':');
+        return [parts[0].trim(), parts.slice(1).join(':').trim()];
+      }).filter(([n]) => Boolean(n));
+
+      const palette = [['award', 'blue'], ['target', 'purple'], ['lightbulb', 'orange'], ['handshake', 'green'], ['shield', 'teal'], ['star', 'pink']];
+      const parsedValues = (d.values || '').split(',').map((v) => v.trim()).filter(Boolean).slice(0, 6).map((v, i) => [v, ...palette[i % palette.length]]);
+
+      const current = IST.db.identity();
+      const updated = {
+        ...current,
+        phone: (d.phone || '').trim(),
+        fax: (d.fax || '').trim(),
+        address: (d.address || '').trim(),
+        postalBox: (d.postalBox || '').trim(),
+        motto: (d.motto || '').trim(),
+        history: (d.history || '').trim(),
+        ...(parsedDir.length ? { directory: parsedDir } : {}),
+        ...(parsedValues.length ? { values: parsedValues } : {}),
+      };
+
+      if (IST.db && IST.db.setSetting) {
+        IST.db.setSetting('identity', updated);
+        if (IST.db.flushRemote) await IST.db.flushRemote();
+      }
+
+      modal.close();
+      ui.toast("Identité de l'IST mise à jour avec succès !", 'success');
+      if (refreshCtx && refreshCtx.refresh) refreshCtx.refresh();
+      else if (IST.app && IST.app.renderCurrent) IST.app.renderCurrent();
+    });
+  }
+
   IST.pages.identite = {
     title: "Identité de l'IST",
     subtitle: 'Hymne, histoire et valeurs de notre école',
-    render() {
+    render(ctx) {
       const id = IST.db.identity();
       const playing = audio && !audio.paused;
+      const phone = id.phone || cfg.phone;
+      const fax = id.fax || cfg.fax;
+      const address = id.address || cfg.address;
+      const postalBox = id.postalBox || cfg.postalBox;
+      const motto = id.motto || "Plus qu'une école, une famille !";
+      const directory = id.directory || [];
+
+      const adminHeader = isAdmin()
+        ? `
+          <div class="card tone-purple row-between mb-lg" style="padding:14px 18px;border-radius:12px;background:var(--surface-variant,#f8fafc);border:1px solid var(--border,#cbd5e1);">
+            <div class="row" style="gap:12px;">
+              <span class="ic-box sm tone-purple">${icon('shield')}</span>
+              <div>
+                <strong>Espace Administrateur Système</strong>
+                <small class="muted" style="display:block;">Personnalisez les coordonnées, devise, histoire et contacts de l'IST.</small>
+              </div>
+            </div>
+            <div class="row" style="gap:8px;">
+              <button class="btn btn-primary btn-sm" data-edit-identity>${icon('edit')}Modifier l'identité</button>
+              <a class="btn btn-soft btn-sm" href="#/admin">${icon('settings')}Admin</a>
+            </div>
+          </div>
+        `
+        : '';
+
       return `
+        ${adminHeader}
         <div class="grid-2">
           <div class="player ${playing ? 'playing' : ''}" data-player>
             ${ui.campusArt()}
@@ -72,13 +186,19 @@
         </div>
 
         <section class="section">
-          <div class="section-head"><h2>Notre histoire</h2></div>
+          <div class="section-head row-between">
+            <h2>Notre histoire</h2>
+            ${isAdmin() ? `<button class="btn btn-ghost btn-sm" data-edit-identity>${icon('edit')}Modifier</button>` : ''}
+          </div>
           <div class="card"><p class="prose">${ui.esc(id.history)}</p></div>
         </section>
 
         <section class="section">
-          <div class="section-head"><h2>Nos valeurs</h2></div>
-          <div class="value-grid">${id.values.map(([v, ic, tone]) => `<div class="card value tone-${tone}"><span class="ic-box">${icon(ic)}</span>${ui.esc(v)}</div>`).join('')}</div>
+          <div class="section-head row-between">
+            <h2>Nos valeurs</h2>
+            ${isAdmin() ? `<button class="btn btn-ghost btn-sm" data-edit-identity>${icon('edit')}Modifier</button>` : ''}
+          </div>
+          <div class="value-grid">${(id.values || []).map(([v, ic, tone]) => `<div class="card value tone-${tone}"><span class="ic-box">${icon(ic)}</span>${ui.esc(v)}</div>`).join('')}</div>
         </section>
 
         <section class="section">
@@ -98,27 +218,30 @@
         </section>
 
         <section class="section">
-          <div class="section-head"><h2>Nous contacter</h2></div>
+          <div class="section-head row-between">
+            <h2>Nous contacter</h2>
+            ${isAdmin() ? `<button class="btn btn-ghost btn-sm" data-edit-identity>${icon('edit')}Modifier contacts</button>` : ''}
+          </div>
           <div class="grid-2" style="align-items:start">
             <div class="card detail-rows" style="margin:0">
-              <div><span class="ic-box sm">${icon('pin')}</span><div><small>Adresse</small>${ui.esc(cfg.address)}<br>${ui.esc(cfg.postalBox)}</div></div>
-              <div><span class="ic-box sm">${icon('phone')}</span><div><small>Téléphone</small><a class="link" href="tel:${cfg.phone.replace(/\s/g, '')}">${ui.esc(cfg.phone)}</a></div></div>
-              <div><span class="ic-box sm">${icon('file')}</span><div><small>Télécopie</small>${ui.esc(cfg.fax)}</div></div>
+              <div><span class="ic-box sm">${icon('pin')}</span><div><small>Adresse</small>${ui.esc(address)}<br>${ui.esc(postalBox)}</div></div>
+              <div><span class="ic-box sm">${icon('phone')}</span><div><small>Téléphone standard</small><a class="link" href="tel:${phone.replace(/\s/g, '')}">${ui.esc(phone)}</a></div></div>
+              ${fax ? `<div><span class="ic-box sm">${icon('file')}</span><div><small>Télécopie</small>${ui.esc(fax)}</div></div>` : ''}
             </div>
-            <div class="list">${id.directory.map(([n, role]) => `
-              <a class="list-item" href="tel:${cfg.phone.replace(/\s/g, '')}"><span class="ic-box sm tone-teal">${icon('building')}</span>
+            <div class="list">${directory.map(([n, role]) => `
+              <a class="list-item" href="tel:${phone.replace(/\s/g, '')}"><span class="ic-box sm tone-teal">${icon('building')}</span>
                 <div class="grow"><strong>${ui.esc(n)}</strong><small>${ui.esc(role)}</small></div>${icon('phone')}</a>`).join('')}</div>
           </div>
         </section>
 
         <div class="card motto-card section">
           <span class="ic-box">${icon('music')}</span>
-          <strong>${ui.esc(cfg.schoolShort)}</strong>
-          <p class="text-2">Plus qu'une école, une famille !</p>
-          <div class="row" style="flex-wrap:wrap;justify-content:center">${id.socials.map(([n, ic, url]) => `<a class="btn btn-soft btn-sm" href="${ui.esc(url)}" target="_blank" rel="noopener">${icon(ic)}${ui.esc(n)}</a>`).join('')}</div>
+          <strong>${ui.esc(id.schoolShort || cfg.schoolShort)}</strong>
+          <p class="text-2">${ui.esc(motto)}</p>
+          <div class="row" style="flex-wrap:wrap;justify-content:center">${(id.socials || []).map(([n, ic, url]) => `<a class="btn btn-soft btn-sm" href="${ui.esc(url)}" target="_blank" rel="noopener">${icon(ic)}${ui.esc(n)}</a>`).join('')}</div>
         </div>`;
     },
-    mount(el) {
+    mount(el, ctx) {
       el.querySelector('[data-play]').addEventListener('click', async () => {
         const a = await getAudio();
         if (!a) return;
@@ -127,6 +250,10 @@
       });
       el.querySelector('[data-seek]').addEventListener('input', (e) => {
         if (audio) audio.currentTime = +e.target.value;
+      });
+      el.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-edit-identity]');
+        if (btn) openEditIdentityModal(ctx);
       });
       syncUI();
     },

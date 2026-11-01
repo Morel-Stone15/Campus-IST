@@ -239,50 +239,122 @@
     const bib = s.bibliotheque || {};
     const sp = s.sport || {};
     const sout = s.soutien || {};
+    const urgText = (s.urgences || []).map(([k, v]) => `${k} : ${v}`).join('\n');
 
     const menuLines = Object.entries(r.menu || {}).map(([d, items]) => `${d}:${items.join(', ')}`).join('\n');
     const pricesLines = (r.prices || []).map(([k, v]) => `${k} : ${v}`).join('\n');
+    const restoHours = (r.hours || []).map(([k, v]) => `${k} : ${v}`).join('\n');
+    const infHours = (inf.hours || []).map(([k, v]) => `${k} : ${v}`).join('\n');
+    const bibHours = (bib.hours || []).map(([k, v]) => `${k} : ${v}`).join('\n');
+    const sportHours = (sp.hours || []).map(([k, v]) => `${k} : ${v}`).join('\n');
 
     return `<div class="grid-2" style="align-items:start">
-      <form class="card admin-form" data-form="service-resto" novalidate>
-        <h3>${icon('utensils')} Restaurant & Cafétéria Universitaire</h3>
-        ${ui.field({ name: 'location', label: 'Localisation', value: r.location || 'Restaurant du campus' })}
-        ${ui.field({ name: 'hours', label: 'Horaires du restaurant', type: 'textarea', rows: 3, value: (r.hours || []).map(([k, v]) => `${k} : ${v}`).join('\n'), hint: 'Une ligne par plage, format : Jour : Plage horaire' })}
-        ${ui.field({ name: 'prices', label: 'Tarifs des repas & snacks', type: 'textarea', rows: 4, value: pricesLines, hint: 'Une ligne par plat, ex. Plat du jour : 1 000 FCFA' })}
-        ${ui.field({ name: 'menus', label: 'Menus de la semaine (1=Lun ... 6=Sam)', type: 'textarea', rows: 6, value: menuLines, hint: 'Format : 1:Plat 1, Plat 2, Fruit' })}
-        <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer le Restaurant</button>
-      </form>
+      <div class="stack">
+        <form class="card admin-form" data-form="service-urgences" novalidate>
+          <h3>${icon('alert')} Numéros d'urgence du campus</h3>
+          <p class="text-2 muted small">Apparaissent dans la carte d'urgence avec appel direct pour tous les étudiants.</p>
+          ${ui.field({ name: 'urgences', label: 'Numéros (un par ligne au format Nom : Numéro)', type: 'textarea', rows: 6, value: urgText, hint: 'Exemple :\nInfirmerie du campus : +241 01 76 34 50\nSAMU : 1300\nPompiers : 18\nPolice : 1730\nSécurité campus : +241 07 00 00 00' })}
+          <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer les Numéros d'urgence</button>
+        </form>
+
+        <form class="card admin-form" data-form="service-resto" novalidate>
+          <h3>${icon('utensils')} Restaurant & Cafétéria Universitaire</h3>
+          <div class="form-row">
+            ${ui.field({ name: 'location', label: 'Localisation', value: r.location || 'Restaurant du campus' })}
+            ${ui.field({ name: 'phone', label: 'Téléphone / Contact', value: r.phone || '', optional: true, placeholder: '+241 01 00 00 00' })}
+          </div>
+          ${ui.field({ name: 'hours', label: 'Horaires du restaurant', type: 'textarea', rows: 3, value: restoHours, hint: 'Format : Jour : Plage horaire' })}
+          ${ui.field({ name: 'prices', label: 'Tarifs des repas & snacks', type: 'textarea', rows: 3, value: pricesLines, hint: 'Format : Plat du jour : 1 000 FCFA' })}
+          ${ui.field({ name: 'menus', label: 'Menus de la semaine (1=Lun ... 6=Sam)', type: 'textarea', rows: 5, value: menuLines, hint: 'Format : 1:Plat 1, Plat 2, Fruit' })}
+          <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer le Restaurant</button>
+        </form>
+      </div>
 
       <div class="stack">
         <form class="card admin-form" data-form="service-sante" novalidate>
-          <h3>${icon('medical')} Infirmerie & Urgences Médicales</h3>
+          <h3>${icon('medical')} Infirmerie & Soutien Psychologique</h3>
+          <strong style="font-size:14px;color:var(--primary,#0A4EA3);display:block;margin-top:6px;">Infirmerie :</strong>
           <div class="form-row">
             ${ui.field({ name: 'inf_phone', label: 'Téléphone de l\'infirmerie', value: inf.phone || '+241 00 00 00 00' })}
             ${ui.field({ name: 'inf_location', label: 'Localisation', value: inf.location || 'Campus IST' })}
           </div>
-          ${ui.field({ name: 'inf_desc', label: 'Description des soins', type: 'textarea', rows: 3, value: inf.description || '' })}
+          ${ui.field({ name: 'inf_hours', label: 'Horaires de l\'infirmerie', type: 'textarea', rows: 2, value: infHours, hint: 'Format : Lundi – Vendredi : 7h30 – 17h00' })}
+          ${ui.field({ name: 'inf_desc', label: 'Description des soins', type: 'textarea', rows: 2, value: inf.description || '' })}
+
+          <strong style="font-size:14px;color:var(--primary,#0A4EA3);display:block;margin-top:14px;">Soutien psychologique :</strong>
           <div class="form-row">
-            ${ui.field({ name: 'sout_phone', label: 'Soutien psychologique (tél.)', value: sout.phone || '+241 00 00 00 00' })}
-            ${ui.field({ name: 'sout_hours', label: 'Permanences soutien', value: (sout.hours && sout.hours[0] ? sout.hours[0].join(' : ') : 'Mardi et jeudi : 9h00 – 16h00') })}
+            ${ui.field({ name: 'sout_phone', label: 'Téléphone soutien', value: sout.phone || '+241 00 00 00 00' })}
+            ${ui.field({ name: 'sout_location', label: 'Localisation', value: sout.location || 'Campus IST' })}
           </div>
+          ${ui.field({ name: 'sout_hours', label: 'Permanences soutien', value: (sout.hours && sout.hours[0] ? sout.hours[0].join(' : ') : 'Mardi et jeudi : 9h00 – 16h00') })}
+          ${ui.field({ name: 'sout_desc', label: 'Description', type: 'textarea', rows: 2, value: sout.description || '' })}
           <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer Pôle Santé</button>
         </form>
 
         <form class="card admin-form" data-form="service-culture" novalidate>
           <h3>${icon('library')} Bibliothèque & Complexe Sportif</h3>
-          ${ui.field({ name: 'bib_desc', label: 'Bibliothèque Universitaire', type: 'textarea', rows: 2, value: bib.description || '' })}
-          ${ui.field({ name: 'sport_desc', label: 'Complexe Sportif & Loisirs', type: 'textarea', rows: 2, value: sp.description || '' })}
+          <strong style="font-size:14px;color:var(--primary,#0A4EA3);display:block;margin-top:6px;">Bibliothèque Universitaire :</strong>
+          <div class="form-row">
+            ${ui.field({ name: 'bib_phone', label: 'Téléphone / Contact', value: bib.phone || '', optional: true })}
+            ${ui.field({ name: 'bib_location', label: 'Localisation', value: bib.location || 'Bibliothèque centrale' })}
+          </div>
+          ${ui.field({ name: 'bib_hours', label: 'Horaires d\'ouverture', type: 'textarea', rows: 2, value: bibHours, hint: 'Format : Lundi – Vendredi : 7h30 – 18h00' })}
+          ${ui.field({ name: 'bib_desc', label: 'Description des ressources', type: 'textarea', rows: 2, value: bib.description || '' })}
+
+          <strong style="font-size:14px;color:var(--primary,#0A4EA3);display:block;margin-top:14px;">Complexe Sportif :</strong>
+          <div class="form-row">
+            ${ui.field({ name: 'sport_phone', label: 'Contact responsable', value: sp.phone || '', optional: true })}
+            ${ui.field({ name: 'sport_location', label: 'Localisation', value: sp.location || 'Terrain de sport' })}
+          </div>
+          ${ui.field({ name: 'sport_hours', label: 'Horaires d\'accès', type: 'textarea', rows: 2, value: sportHours, hint: 'Format : Lundi – Vendredi : 16h00 – 19h00' })}
+          ${ui.field({ name: 'sport_desc', label: 'Description des infrastructures', type: 'textarea', rows: 2, value: sp.description || '' })}
           <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer Bibliothèque & Sport</button>
         </form>
       </div>
     </div>`;
   }
 
-  /* ---------- Identité : hymne, paroles, histoire ---------- */
+  /* ---------- Identité : hymne, paroles, coordonnées, histoire ---------- */
   function identite() {
     const id = db.identity();
     const hymn = db.setting('hymn', null);
+    const phone = id.phone || cfg.phone;
+    const fax = id.fax || cfg.fax;
+    const address = id.address || cfg.address;
+    const postalBox = id.postalBox || cfg.postalBox;
+    const motto = id.motto || "Plus qu'une école, une famille !";
+    const dirText = (id.directory || []).map(([n, r]) => `${n} : ${r}`).join('\n');
+
     return `<div class="grid-2" style="align-items:start">
+      <div class="stack">
+        <form class="card admin-form" data-form="contact-ist" novalidate>
+          <h3>${icon('phone')} Coordonnées & Devise officielles</h3>
+          <div class="form-row">
+            ${ui.field({ name: 'phone', label: 'Téléphone standard', value: phone, required: true })}
+            ${ui.field({ name: 'fax', label: 'Télécopie / Fax', value: fax, optional: true })}
+          </div>
+          <div class="form-row">
+            ${ui.field({ name: 'address', label: 'Adresse physique', value: address, required: true })}
+            ${ui.field({ name: 'postalBox', label: 'Boîte postale', value: postalBox, required: true })}
+          </div>
+          ${ui.field({ name: 'motto', label: 'Devise / Slogan officiel', value: motto, required: true })}
+          <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer Coordonnées</button>
+        </form>
+
+        <form class="card admin-form" data-form="annuaire-ist" novalidate>
+          <h3>${icon('building')} Annuaire des services de l'IST</h3>
+          ${ui.field({ name: 'directory', label: 'Services et rôles (un par ligne : Nom : Rôle ou téléphone)', type: 'textarea', rows: 6, value: dirText })}
+          <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer l'Annuaire</button>
+        </form>
+
+        <form class="card admin-form" data-form="histoire" novalidate>
+          <h3>${icon('book')} Présentation & Histoire de l'IST</h3>
+          ${ui.field({ name: 'history', label: 'Notre histoire', type: 'textarea', rows: 8, value: id.history })}
+          ${ui.field({ name: 'values', label: 'Nos valeurs', value: (id.values || []).map((v) => v[0]).join(', '), hint: 'Séparées par des virgules (5 maximum conseillées).' })}
+          <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer Présentation</button>
+        </form>
+      </div>
+
       <div class="stack">
         <form class="card admin-form" data-form="hymne" novalidate>
           <h3>${icon('music')} Hymne de l'IST</h3>
@@ -293,16 +365,10 @@
         </form>
         <form class="card admin-form" data-form="paroles" novalidate>
           <h3>${icon('text')} Paroles de l'hymne</h3>
-          ${ui.field({ name: 'lyrics', label: 'Paroles', type: 'textarea', rows: 10, value: id.lyrics.map((st) => st.join('\n')).join('\n\n'), hint: 'Laisse une ligne vide entre deux couplets.' })}
+          ${ui.field({ name: 'lyrics', label: 'Paroles', type: 'textarea', rows: 12, value: id.lyrics.map((st) => st.join('\n')).join('\n\n'), hint: 'Laisse une ligne vide entre deux couplets.' })}
           <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer les paroles</button>
         </form>
       </div>
-      <form class="card admin-form" data-form="histoire" novalidate>
-        <h3>${icon('book')} Présentation de l'IST</h3>
-        ${ui.field({ name: 'history', label: 'Notre histoire', type: 'textarea', rows: 9, value: id.history })}
-        ${ui.field({ name: 'values', label: 'Nos valeurs', value: id.values.map((v) => v[0]).join(', '), hint: 'Séparées par des virgules (5 maximum conseillées).' })}
-        <button class="btn btn-primary" type="submit">${icon('check')}Enregistrer</button>
-      </form>
     </div>`;
   }
 
@@ -624,11 +690,30 @@
         description: d.description.trim(),
       });
       ui.toast("Unité d'enseignement (UE) enregistrée avec succès !", 'success');
+    } else if (kind === 'service-urgences') {
+      const cur = db.services();
+      const lines = d.urgences.split('\n').map((l) => l.trim()).filter(Boolean);
+      const parsed = lines.map((l) => {
+        const parts = l.split(':');
+        const name = parts[0].trim();
+        const num = parts.slice(1).join(':').trim();
+        let ic = 'phone';
+        const lower = name.toLowerCase();
+        if (lower.includes('samu') || lower.includes('santé') || lower.includes('médic')) ic = 'heart';
+        else if (lower.includes('pompier') || lower.includes('secours') || lower.includes('urgence')) ic = 'alert';
+        else if (lower.includes('police') || lower.includes('sécurité') || lower.includes('gardien')) ic = 'shield';
+        return [name, num, ic];
+      });
+      db.setSetting('services', {
+        ...cur,
+        urgences: parsed.length ? parsed : cur.urgences,
+      });
+      ui.toast('Numéros d\'urgence du campus enregistrés avec succès !', 'success');
     } else if (kind === 'service-resto') {
       const cur = db.services();
       const resto = cur.restaurant || {};
-      const hours = d.hours.split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length === 2);
-      const prices = d.prices.split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length === 2);
+      const hours = d.hours.split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length >= 2);
+      const prices = d.prices.split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length >= 2);
       const menu = {};
       d.menus.split('\n').forEach((l) => {
         const parts = l.split(':');
@@ -642,6 +727,7 @@
         restaurant: {
           ...resto,
           location: d.location.trim() || resto.location,
+          phone: (d.phone || '').trim() || resto.phone,
           hours: hours.length ? hours : resto.hours,
           prices: prices.length ? prices : resto.prices,
           menu: Object.keys(menu).length ? menu : resto.menu,
@@ -652,18 +738,23 @@
       const cur = db.services();
       const inf = cur.infirmerie || {};
       const sout = cur.soutien || {};
+      const infHours = (d.inf_hours || '').split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length >= 2);
+      const soutHours = (d.sout_hours || '').split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length >= 2);
       db.setSetting('services', {
         ...cur,
         infirmerie: {
           ...inf,
           phone: d.inf_phone.trim(),
           location: d.inf_location.trim(),
+          hours: infHours.length ? infHours : inf.hours,
           description: d.inf_desc.trim(),
         },
         soutien: {
           ...sout,
           phone: d.sout_phone.trim(),
-          hours: [[d.sout_hours.trim()]],
+          location: (d.sout_location || '').trim() || sout.location,
+          hours: soutHours.length ? soutHours : sout.hours,
+          description: (d.sout_desc || '').trim() || sout.description,
         },
       });
       ui.toast('Informations médicales et soutien enregistrés !', 'success');
@@ -671,12 +762,49 @@
       const cur = db.services();
       const bib = cur.bibliotheque || {};
       const sp = cur.sport || {};
+      const bibHours = (d.bib_hours || '').split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length >= 2);
+      const sportHours = (d.sport_hours || '').split('\n').map((l) => l.split(':').map((s) => s.trim())).filter((x) => x.length >= 2);
       db.setSetting('services', {
         ...cur,
-        bibliotheque: { ...bib, description: d.bib_desc.trim() },
-        sport: { ...sp, description: d.sport_desc.trim() },
+        bibliotheque: {
+          ...bib,
+          phone: (d.bib_phone || '').trim() || bib.phone,
+          location: (d.bib_location || '').trim() || bib.location,
+          hours: bibHours.length ? bibHours : bib.hours,
+          description: d.bib_desc.trim(),
+        },
+        sport: {
+          ...sp,
+          phone: (d.sport_phone || '').trim() || sp.phone,
+          location: (d.sport_location || '').trim() || sp.location,
+          hours: sportHours.length ? sportHours : sp.hours,
+          description: d.sport_desc.trim(),
+        },
       });
       ui.toast('Informations Bibliothèque et Complexe Sportif enregistrées !', 'success');
+    } else if (kind === 'contact-ist') {
+      const cur = db.identity();
+      db.setSetting('identity', {
+        ...cur,
+        phone: d.phone.trim(),
+        fax: (d.fax || '').trim(),
+        address: d.address.trim(),
+        postalBox: d.postalBox.trim(),
+        motto: d.motto.trim(),
+      });
+      ui.toast('Coordonnées officielles et devise de l\'IST enregistrées !', 'success');
+    } else if (kind === 'annuaire-ist') {
+      const cur = db.identity();
+      const lines = (d.directory || '').split('\n').map((l) => l.trim()).filter(Boolean);
+      const parsedDir = lines.map((l) => {
+        const parts = l.split(':');
+        return [parts[0].trim(), parts.slice(1).join(':').trim()];
+      }).filter(([n]) => Boolean(n));
+      db.setSetting('identity', {
+        ...cur,
+        directory: parsedDir.length ? parsedDir : cur.directory,
+      });
+      ui.toast('Annuaire des services de l\'IST enregistré !', 'success');
     } else if (kind === 'document') {
       if (!required(f, d, ['title'])) return false;
       const file = f.querySelector('input[type=file]').files[0];
