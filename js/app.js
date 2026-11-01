@@ -334,8 +334,88 @@
     }
     IST.theme.apply(IST.theme.get());
     render();
+
+    /* ---------- Gestionnaire de mises à jour PWA ---------- */
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      let newWorker = null;
+
+      // Bannière de changelog affichée à l'utilisateur
+      function showUpdateBanner(changelog) {
+        const old = document.getElementById('pwa-update-banner');
+        if (old) old.remove();
+        const items = (changelog || []).map((l) => `<li style="margin:4px 0;font-size:13px;opacity:.95;">${l}</li>`).join('');
+        const banner = document.createElement('div');
+        banner.id = 'pwa-update-banner';
+        banner.style.cssText = [
+          'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);',
+          'z-index:9999;width:min(92vw,460px);',
+          'background:linear-gradient(135deg,#0A4EA3,#0284c7);',
+          'color:#fff;border-radius:18px;padding:18px 20px;',
+          'box-shadow:0 8px 32px rgba(10,78,163,.4);',
+          'animation:swSlideUp .35s cubic-bezier(.22,1,.36,1) both;',
+        ].join('');
+        banner.innerHTML = `
+          <style>@keyframes swSlideUp{from{opacity:0;transform:translate(-50%,30px)}to{opacity:1;transform:translate(-50%,0)}}</style>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span style="font-size:26px;">🚀</span>
+            <div style="flex:1;">
+              <strong style="font-size:15px;display:block;">Nouvelle version disponible !</strong>
+              <small style="opacity:.85;font-size:12px;">Campus+ IST a été amélioré</small>
+            </div>
+            <button id="pwa-update-dismiss" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;">Plus tard</button>
+          </div>
+          ${items ? `<ul style="margin:0 0 14px 16px;padding:0;">${items}</ul>` : ''}
+          <button id="pwa-update-now" style="width:100%;background:#fff;color:#0A4EA3;border:none;border-radius:12px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15);">
+            ✅ Mettre à jour maintenant
+          </button>`;
+        document.body.appendChild(banner);
+        document.getElementById('pwa-update-now').onclick = () => {
+          banner.remove();
+          if (newWorker) newWorker.postMessage({ type: 'SKIP_WAITING' });
+          else location.reload();
+        };
+        document.getElementById('pwa-update-dismiss').onclick = () => banner.remove();
+      }
+
+      // Le SW envoie APP_UPDATED après activation → afficher le changelog
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'APP_UPDATED') {
+          showUpdateBanner(e.data.changelog);
+        }
+      });
+
+      // Recharger proprement quand le nouveau SW prend le contrôle
+      let reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!reloading) { reloading = true; location.reload(); }
+      });
+
+      // Enregistrement + surveillance des mises à jour
+      navigator.serviceWorker.register('sw.js')
+        .then((reg) => {
+          // SW déjà en attente (app installée, update déjà téléchargé)
+          if (reg.waiting) {
+            newWorker = reg.waiting;
+            showUpdateBanner(null);
+          }
+          // Nouveau SW en cours de téléchargement
+          reg.addEventListener('updatefound', () => {
+            newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showUpdateBanner(null);
+              }
+            });
+          });
+          // Vérification silencieuse toutes les heures
+          setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+          // Vérification à chaque retour sur l'onglet
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') reg.update().catch(() => {});
+          });
+        })
+        .catch(() => {});
     }
   })();
 })();
+
