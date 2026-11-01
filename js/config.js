@@ -33,6 +33,7 @@ IST.config = {
     enseignant: 'Enseignant(e)',
     chef: 'Chef de filière',
     admin: 'Administration',
+    communication: 'Service Communication',
   },
   civilites: ['M.', 'Mme', 'Dr', 'Pr'],
 

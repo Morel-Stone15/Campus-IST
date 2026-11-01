@@ -1,20 +1,39 @@
-/* Agenda : activités étudiantes + agenda personnel */
+/* Agenda : activités étudiantes + agenda personnel + gestion événements (Communication / Admin) */
 (function () {
   const { ui, db, auth, date: D } = IST;
   const icon = IST.icon;
   const st = { tab: 'activites', when: null, showCourses: true };
 
+  function canManageEvents(u) {
+    return Boolean(u && (
+      u.role === 'admin' ||
+      u.role === 'communication' ||
+      u.role === 'staff' ||
+      u.role === 'chef' ||
+      (u.fonction && u.fonction.toLowerCase().includes('com')) ||
+      (u.email && u.email.toLowerCase().includes('com'))
+    ));
+  }
+
   /* ---------- Détail d'un événement (utilisé aussi par l'accueil) ---------- */
   function openEvent(ev, ctx) {
     if (!ev) return;
+    const u = auth.current();
     const tone = ui.TONES.event[ev.category] || 'blue';
     const isIn = () => (auth.current().events || []).includes(ev.id);
     const range = ev.endDate && ev.endDate !== ev.date ? `Du ${D.long(ev.date)} au ${D.long(ev.endDate)}` : D.long(ev.date);
+    const allowManage = canManageEvents(u);
+
     const btn = () => (isIn()
       ? `<button class="btn btn-outline" data-toggle>${icon('check')}Dans mon agenda</button>`
       : `<button class="btn btn-primary" data-toggle>${icon('plus')}Ajouter à mon agenda</button>`);
+
+    const adminActions = allowManage
+      ? `<button class="btn btn-danger-outline btn-sm" data-del-event="${ev.id}">${icon('trash')}Supprimer l'événement</button>`
+      : '';
+
     const s = ui.sheet({
-      title: 'Événement',
+      title: 'Détails de l'événement',
       body: `<div class="tone-${tone}">
         <div class="event-hero">${icon(ui.EVENT_ICONS[ev.category] || 'calendar')}<span class="tag">${ui.esc(ev.category)} · ${ev.type === 'externe' ? 'Externe' : 'Interne'}</span><h2>${ui.esc(ev.title)}</h2></div>
         <div class="detail-rows">
@@ -24,21 +43,104 @@
           ${ev.organizer ? `<div><span class="ic-box sm">${icon('users')}</span><div><small>Organisé par</small>${ui.esc(ev.organizer)}</div></div>` : ''}
         </div>
         <p class="prose">${ui.esc(ev.description || '')}</p></div>`,
-      footer: `<span class="push"></span><span data-slot>${btn()}</span>`,
+      footer: `<div class="row-between grow" style="gap:12px;">${adminActions}<div class="push"></div><span data-slot>${btn()}</span></div>`,
     });
-    s.el.addEventListener('click', (e) => {
-      if (!e.target.closest('[data-toggle]')) return;
-      const u = auth.current();
-      const list = new Set(u.events || []);
-      const adding = !list.has(ev.id);
-      adding ? list.add(ev.id) : list.delete(ev.id);
-      auth.update(u.id, { events: [...list] });
-      s.el.querySelector('[data-slot]').innerHTML = btn();
-      ui.toast(adding ? 'Ajouté à ton agenda.' : 'Retiré de ton agenda.', 'success');
-      ctx && ctx.refresh();
+
+    s.el.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-toggle]')) {
+        const currentUser = auth.current();
+        const list = new Set(currentUser.events || []);
+        const adding = !list.has(ev.id);
+        adding ? list.add(ev.id) : list.delete(ev.id);
+        auth.update(currentUser.id, { events: [...list] });
+        s.el.querySelector('[data-slot]').innerHTML = btn();
+        ui.toast(adding ? 'Ajouté à ton agenda.' : 'Retiré de ton agenda.', 'success');
+        ctx && ctx.refresh();
+        return;
+      }
+
+      if (e.target.closest('[data-del-event]')) {
+        if (await ui.confirm(`Voulez-vous supprimer l'événement « ${ev.title} » ?`, { ok: 'Supprimer', danger: true })) {
+          db.remove('events', ev.id);
+          s.close();
+          ui.toast('Événement supprimé.', 'success');
+          ctx && ctx.refresh();
+        }
+      }
     });
   }
   IST.agenda = { openEvent };
+
+  /* ---------- Modal Ajout d'événement (Communication / Admin) ---------- */
+  function addEventModal(ctx) {
+    const u = ctx.user || auth.current() || {};
+    const categories = Object.keys(ui.TONES.event);
+
+    const s = ui.sheet({
+      title: 'Publier un nouvel événement',
+      body: `<form class="admin-form stack-lg" id="event-add-form" novalidate>
+        ${ui.field({ name: 'title', label: "Titre de l'événement", placeholder: 'Ex. Grande Conférence : Métiers du Numérique', required: true })}
+        <div class="form-row">
+          ${ui.field({ name: 'category', label: 'Catégorie', type: 'select', options: categories, value: 'Culture' })}
+          ${ui.field({ name: 'type', label: 'Portée', type: 'select', options: [['interne', 'Interne (Campus IST)'], ['externe', 'Externe (Partenaires)']], value: 'interne' })}
+        </div>
+        <div class="form-row">
+          ${ui.field({ name: 'date', label: 'Date de début', type: 'date', value: D.iso(new Date()), required: true })}
+          ${ui.field({ name: 'endDate', label: 'Date de fin (optionnel)', type: 'date', optional: true })}
+        </div>
+        <div class="form-row">
+          ${ui.field({ name: 'time', label: 'Heure', type: 'time', value: '10:00', optional: true })}
+          ${ui.field({ name: 'place', label: 'Lieu', placeholder: 'Ex. Amphithéâtre / Campus IST', value: 'Campus IST', required: true })}
+        </div>
+        ${ui.field({ name: 'organizer', label: 'Organisateur', value: u.role === 'communication' ? 'Service Communication' : 'Direction des études', required: true })}
+        ${ui.field({ name: 'description', label: 'Description détaillée', type: 'textarea', rows: 4, placeholder: 'Programme, intervenants, conditions de participation…' })}
+        <label class="check">
+          <input type="checkbox" name="notify" checked>
+          Notifier tous les étudiants de cet événement
+        </label>
+      </form>`,
+      footer: `<button class="btn btn-ghost" data-close>Annuler</button><button class="btn btn-primary" type="submit" form="event-add-form">${icon('plus')}Enregistrer l'événement</button>`,
+    });
+
+    const f = s.el.querySelector('#event-add-form');
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const d = ui.formData(f);
+      ui.setErr(f, 'title', d.title.trim() ? '' : "Donnez un titre à l'événement.");
+      ui.setErr(f, 'date', d.date ? '' : 'Indiquez la date.');
+      ui.setErr(f, 'place', d.place.trim() ? '' : 'Indiquez le lieu.');
+      if (!d.title.trim() || !d.date || !d.place.trim()) return;
+
+      const newEv = {
+        title: d.title.trim(),
+        category: d.category || 'Culture',
+        type: d.type || 'interne',
+        date: d.date,
+        endDate: d.endDate || '',
+        time: d.time || '',
+        place: d.place.trim(),
+        organizer: (d.organizer || 'Service Communication').trim(),
+        description: (d.description || '').trim(),
+        createdAt: new Date().toISOString(),
+      };
+
+      db.add('events', newEv);
+
+      if (d.notify) {
+        db.notify({
+          type: 'evenement',
+          icon: 'calendar',
+          title: `Nouvel événement : ${newEv.title}`,
+          body: `${newEv.category} · Le ${D.fmt(newEv.date, { day: 'numeric', month: 'long' })} à ${newEv.place}.`,
+          link: 'agenda',
+        });
+      }
+
+      s.close();
+      ui.toast(`Événement « ${newEv.title} » publié avec succès !`, 'success');
+      ctx.refresh();
+    });
+  }
 
   /* ---------- Onglet Activités ---------- */
   function activities(user) {
@@ -48,12 +150,26 @@
     if (!st.when) st.when = ongoing.length ? 'encours' : 'avenir';
     const list = st.when === 'encours' ? ongoing : all.filter((e) => e.date > today);
     const mine = new Set(user.events || []);
+    const allowManage = canManageEvents(user);
+
+    const manageBar = allowManage
+      ? `<div class="row-between mb" style="flex-wrap:wrap;gap:12px;background:var(--surface,#fff);padding:12px 16px;border-radius:12px;border:1px solid var(--border,#e2e8f0);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="badge tone-purple" style="font-size:12px;">${icon('megaphone')} Service Communication & Admin</span>
+            <span class="muted small">Actualisez les activités du campus en direct.</span>
+          </div>
+          <button class="btn btn-primary" data-add-event>${icon('plus')}Ajouter un événement</button>
+        </div>`
+      : '';
+
     const section = (title, items) => `<section class="section">
       <div class="section-head"><h2>${title}</h2><span class="muted small">${items.length}</span></div>
       ${items.length ? `<div class="grid-2">${items.map((e) => ui.eventCard(e, { participating: mine.has(e.id) })).join('')}</div>`
         : `<div class="card">${ui.empty('calendar', 'Rien pour le moment', 'Les prochains événements apparaîtront ici.')}</div>`}
     </section>`;
+
     return `
+      ${manageBar}
       ${ui.seg([['encours', `En cours${ongoing.length ? ` (${ongoing.length})` : ''}`], ['avenir', 'À venir']], st.when, 'when', 'full')}
       ${section('Événements internes', list.filter((e) => e.type !== 'externe'))}
       ${section('Événements externes', list.filter((e) => e.type === 'externe'))}`;
@@ -142,10 +258,11 @@
         if (e.target.matches('[data-show-courses]')) { st.showCourses = e.target.checked; ctx.refresh(); }
       });
       el.addEventListener('click', async (e) => {
-        const t = e.target.closest('[data-tab], [data-when], [data-event], [data-add-reminder], [data-del-reminder]');
+        const t = e.target.closest('[data-tab], [data-when], [data-event], [data-add-event], [data-add-reminder], [data-del-reminder]');
         if (!t) return;
         if (t.dataset.tab) { st.tab = t.dataset.tab; ctx.refresh(); }
         else if (t.dataset.when) { st.when = t.dataset.when; ctx.refresh(); }
+        else if (t.hasAttribute('data-add-event')) addEventModal(ctx);
         else if (t.dataset.event) openEvent(db.find('events', t.dataset.event), ctx);
         else if (t.hasAttribute('data-add-reminder')) addReminder(ctx);
         else if (t.dataset.delReminder) {

@@ -11,12 +11,12 @@
 
   function members() {
     return auth.users()
-      .filter((u) => ['enseignant', 'chef', 'admin'].includes(u.role))
+      .filter((u) => ['enseignant', 'chef', 'admin', 'communication', 'staff'].includes(u.role))
       .sort((a, b) => ui.displayName(a).localeCompare(ui.displayName(b), 'fr'));
   }
 
   function category(user) {
-    return user.role === 'admin' ? 'administration' : 'teaching';
+    return (user.role === 'admin' || user.role === 'communication' || user.role === 'staff') ? 'administration' : 'teaching';
   }
 
   function description(user) {

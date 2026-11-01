@@ -432,7 +432,18 @@
           const res = await window.IST.api.auth.login(email, password, remember);
           if (res.ok && res.user) {
             const apiUser = res.user;
-            const roleMap = { student: 'etudiant', teacher: 'enseignant', staff: 'admin', manager: 'admin', admin: 'admin' };
+            const roleMap = {
+              student: 'etudiant',
+              teacher: 'enseignant',
+              staff: 'admin',
+              manager: 'admin',
+              admin: 'admin',
+              communication: 'communication',
+            };
+            let assignedRole = roleMap[apiUser.role] || 'etudiant';
+            if (apiUser.email && apiUser.email.toLowerCase().includes('communication')) {
+              assignedRole = 'communication';
+            }
             const existing = auth.findByEmail(email);
             const u = {
               ...(existing || {}),
@@ -443,7 +454,7 @@
               filiere: (apiUser.student_profile && apiUser.student_profile.department_code) || (existing && existing.filiere) || '',
               niveau: (apiUser.student_profile && apiUser.student_profile.level) || (existing && existing.niveau) || 'L1',
               phone: apiUser.phone || (existing && existing.phone) || '',
-              role: roleMap[apiUser.role] || 'etudiant',
+              role: assignedRole,
               password: await hash(email.toLowerCase() + '|' + password),
               createdAt: apiUser.created_at || (existing && existing.createdAt) || new Date().toISOString(),
               readNotifs: (existing && existing.readNotifs) || [], events: (existing && existing.events) || [],

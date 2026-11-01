@@ -13,7 +13,9 @@ from app.utils.decorators import role_required
 
 documents_bp = Blueprint("documents", __name__)
 
-ALLOWED_EXTENSIONS = {"pdf"}
+ALLOWED_EXTENSIONS = {
+    "pdf", "docx", "doc", "pptx", "ppt", "xlsx", "xls", "txt", "zip", "png", "jpg", "jpeg"
+}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16 MB
 
 
@@ -241,7 +243,7 @@ def download_document(doc_id):
             directory,
             filename,
             as_attachment=True,
-            download_name=doc.title + ".pdf",
+            download_name=doc.file_name or (doc.title + ".pdf"),
         )
     except FileNotFoundError:
         return error_response("Fichier introuvable sur le serveur.", 404)

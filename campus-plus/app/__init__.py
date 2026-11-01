@@ -277,38 +277,58 @@ def _seed_initial_data(app: Flask) -> None:
                 is_current=True,
             ))
 
-        # 3. Initial Admin
-        admin_email = os.environ.get("INITIAL_ADMIN_EMAIL", "admin@ist.ga").strip().lower()
-        admin_pass = os.environ.get("INITIAL_ADMIN_PASSWORD", "AdminIST2025!")
+        # 3. Initial Accounts (Admin Système, Admin, Communication, Enseignant)
+        accounts_to_seed = [
+            {
+                "email": "admin.systeme@ist.ga",
+                "username": "admin_systeme",
+                "first_name": "Admin",
+                "last_name": "Système",
+                "role": "admin",
+                "password": os.environ.get("SYSTEM_ADMIN_PASSWORD", "AdminSysIST2025!"),
+            },
+            {
+                "email": os.environ.get("INITIAL_ADMIN_EMAIL", "admin@ist.ga").strip().lower(),
+                "username": "admin_ist",
+                "first_name": "Administrateur",
+                "last_name": "IST",
+                "role": "admin",
+                "password": os.environ.get("INITIAL_ADMIN_PASSWORD", "AdminIST2025!"),
+            },
+            {
+                "email": "communication@ist.ga",
+                "username": "communication_ist",
+                "first_name": "Chargé de",
+                "last_name": "Communication",
+                "role": "staff",
+                "password": os.environ.get("COM_PASSWORD", "ComIST2025!"),
+            },
+            {
+                "email": "professeur@ist.ga",
+                "username": "prof_obiang",
+                "first_name": "Jean-Pierre",
+                "last_name": "OBIANG",
+                "role": "teacher",
+                "password": os.environ.get("TEACHER_PASSWORD", "ProfIST2025!"),
+            },
+        ]
 
-        if not User.query.filter_by(email=admin_email).first():
-            admin = User(
-                email=admin_email,
-                username="admin_ist",
-                first_name="Administrateur",
-                last_name="IST",
-                role="admin",
-                is_active=True,
-                is_verified=True,
-            )
-            admin.set_password(admin_pass)
-            db.session.add(admin)
-
-        if admin_email != "admin@ist.edu" and not User.query.filter_by(email="admin@ist.edu").first():
-            admin_edu = User(
-                email="admin@ist.edu",
-                username="admin_ist_edu",
-                first_name="Administrateur",
-                last_name="IST",
-                role="admin",
-                is_active=True,
-                is_verified=True,
-            )
-            admin_edu.set_password(admin_pass)
-            db.session.add(admin_edu)
+        for acc in accounts_to_seed:
+            if not User.query.filter_by(email=acc["email"]).first():
+                u = User(
+                    email=acc["email"],
+                    username=acc["username"],
+                    first_name=acc["first_name"],
+                    last_name=acc["last_name"],
+                    role=acc["role"],
+                    is_active=True,
+                    is_verified=True,
+                )
+                u.set_password(acc["password"])
+                db.session.add(u)
 
         db.session.commit()
-        app.logger.info("Base de données initialisée avec succès (admin: %s).", admin_email)
+        app.logger.info("Base de données initialisée avec succès (comptes système & communication créés).")
     except Exception as exc:
         db.session.rollback()
         app.logger.warning("Auto-seed initial data skipped: %s", exc)
