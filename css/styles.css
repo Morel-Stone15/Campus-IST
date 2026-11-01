@@ -729,7 +729,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); }
 .map-results { max-height: calc(100vh - 290px); overflow-y: auto; }
 .map-shell { position: relative; border-radius: 22px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); background: var(--map-grass); }
 .map-wrap { overflow: auto; max-height: calc(100vh - 140px); scrollbar-width: thin; }
-.map-canvas { position: relative; aspect-ratio: 1000 / 700; width: 100%; min-width: 100%; transition: width 0.25s ease; }
+.map-canvas { position: relative; aspect-ratio: 1000 / 720; width: 100%; min-width: 100%; transition: width 0.25s ease; }
 .map-canvas > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .m-grass { fill: var(--map-grass); }
 .m-dot { fill: var(--map-grass-2); }
@@ -740,14 +740,54 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); }
 .m-roof { fill: var(--map-roof); }
 .m-label { fill: var(--map-label); font: 700 17px var(--font); text-anchor: middle; }
 .m-sub { fill: var(--map-label); opacity: 0.7; font: 600 12px var(--font); text-anchor: middle; }
-.m-tree { fill: #6aa84f; }
-.m-tree2 { fill: #8bc34a; }
-.m-field { fill: #4caf50; }
-.m-field-line { stroke: rgba(255, 255, 255, 0.85); fill: none; stroke-width: 3; }
+.m-tree { fill: #48a04b; }
+.m-tree2 { fill: #72bf54; }
+.m-tree-shadow { fill: rgba(0, 0, 0, 0.12); }
+.m-field { fill: #388e3c; }
+.m-field-line { stroke: rgba(255, 255, 255, 0.9); fill: none; stroke-width: 2.5; }
 .m-park { fill: #b0bccb; }
 .m-park-line { stroke: #fff; stroke-width: 2; }
 :root[data-theme='dark'] .m-park { fill: #3a4a63; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .m-park { fill: #3a4a63; } }
+
+/* Styles du Master Plan architectural */
+.m-arch-roof { fill: #f29a96; stroke: #ffffff; stroke-width: 2.5; stroke-linejoin: round; }
+.m-arch-roof-alt { fill: #e88782; stroke: #ffffff; stroke-width: 2; }
+.m-arch-ridge { stroke: rgba(255, 255, 255, 0.85); stroke-width: 1.5; fill: none; }
+.m-arch-badge { fill: #ffffff; stroke: #0f172a; stroke-width: 1.5; }
+.m-arch-num { fill: #0f172a; font-family: var(--font); font-size: 13px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+.m-arch-title { fill: #1e293b; font-family: var(--font); font-size: 10.5px; font-weight: 700; text-anchor: middle; letter-spacing: 0.5px; paint-order: stroke; stroke: #ffffff; stroke-width: 3px; stroke-linejoin: round; }
+.m-arch-title-sm { fill: #334155; font-family: var(--font); font-size: 9px; font-weight: 700; text-anchor: middle; letter-spacing: 0.4px; paint-order: stroke; stroke: #ffffff; stroke-width: 2.5px; stroke-linejoin: round; }
+.m-track-ring { fill: #b84334; }
+.m-track-lane { stroke: rgba(255, 255, 255, 0.65); stroke-width: 1; fill: none; }
+.m-court-poly { fill: #d8757d; stroke: #ffffff; stroke-width: 1.5; }
+.m-court-line { stroke: rgba(255, 255, 255, 0.9); stroke-width: 1.5; fill: none; }
+.m-rf-hatch { fill: rgba(244, 154, 150, 0.18); stroke: #e02d3c; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.m-pave-walk { fill: #e2e8f0; stroke: #cbd5e1; stroke-width: 1; }
+.m-curb { fill: none; stroke: #cbd5e1; stroke-width: 1.5; }
+.m-access-beacon { stroke: #e02d3c; stroke-width: 3.5; fill: none; animation: pulseBeacon 2s infinite ease-in-out; }
+@keyframes pulseBeacon { 0%, 100% { stroke-width: 3.5; opacity: 1; } 50% { stroke-width: 6; opacity: 0.6; } }
+
+:root[data-theme='dark'] .m-arch-roof { fill: #9e4b47; stroke: #e2e8f0; }
+:root[data-theme='dark'] .m-arch-roof-alt { fill: #8b3f3b; stroke: #e2e8f0; }
+:root[data-theme='dark'] .m-arch-badge { fill: #1e293b; stroke: #e2e8f0; }
+:root[data-theme='dark'] .m-arch-num { fill: #f8fafc; }
+:root[data-theme='dark'] .m-arch-title { fill: #f8fafc; stroke: #0f172a; }
+:root[data-theme='dark'] .m-arch-title-sm { fill: #e2e8f0; stroke: #0f172a; }
+:root[data-theme='dark'] .m-track-ring { fill: #822e23; }
+:root[data-theme='dark'] .m-court-poly { fill: #8f3e45; }
+:root[data-theme='dark'] .m-pave-walk { fill: #1e293b; stroke: #334155; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .m-arch-roof { fill: #9e4b47; stroke: #e2e8f0; }
+  :root:not([data-theme='light']) .m-arch-roof-alt { fill: #8b3f3b; stroke: #e2e8f0; }
+  :root:not([data-theme='light']) .m-arch-badge { fill: #1e293b; stroke: #e2e8f0; }
+  :root:not([data-theme='light']) .m-arch-num { fill: #f8fafc; }
+  :root:not([data-theme='light']) .m-arch-title { fill: #f8fafc; stroke: #0f172a; }
+  :root:not([data-theme='light']) .m-arch-title-sm { fill: #e2e8f0; stroke: #0f172a; }
+  :root:not([data-theme='light']) .m-track-ring { fill: #822e23; }
+  :root:not([data-theme='light']) .m-court-poly { fill: #8f3e45; }
+  :root:not([data-theme='light']) .m-pave-walk { fill: #1e293b; stroke: #334155; }
+}
 .marker {
   position: absolute; transform: translate(-50%, -100%); border: 0; background: none; padding: 0; z-index: 2;
   display: grid; justify-items: center; transition: opacity 0.2s;
