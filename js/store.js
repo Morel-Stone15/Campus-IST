@@ -385,8 +385,16 @@
         }
       }
 
-      if (changed) {
-        auth.saveUsers(us);
+      // Nettoyer les comptes de test et ne conserver que les comptes officiels valides
+      const officialEmails = new Set(defaults.map((d) => d.email.toLowerCase()));
+      const cleaned = us.filter((u) => officialEmails.has((u.email || '').toLowerCase()) || (u.createdAt && !u.email.includes('example') && !u.email.includes('test')));
+      
+      // Supprimer spécifiquement les comptes de test connus
+      const testEmails = ['charledupuit@gmail.com', 'theodulemorelyedidia@gmail.com', 'admin@ist.edu', 'directeur@ist.edu', 'secretariat@ist.edu'];
+      const finalUsers = cleaned.filter((u) => !testEmails.includes((u.email || '').toLowerCase()) && !u.email.endsWith('@ist.edu'));
+
+      if (changed || finalUsers.length !== us.length) {
+        auth.saveUsers(finalUsers);
       }
     },
 
