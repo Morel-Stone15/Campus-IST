@@ -1,0 +1,14 @@
+{
+  "name": "Campus+ · IST",
+  "short_name": "Campus+",
+  "description": "Tout ton campus IST dans une seule application.",
+  "lang": "fr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0A4EA3",
+  "theme_color": "#0A4EA3",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
