@@ -23,3 +23,7 @@ campus-plus/logs/*.log.*
 build/
 dist/
 CampusPlus.exe
+
+texte
+*.credentials
+*.secret
