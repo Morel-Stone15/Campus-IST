@@ -181,7 +181,18 @@
     const { name, params } = parse();
     const user = auth.current();
 
-    if (!name) return go(user ? 'home' : 'welcome');
+    if (!name) {
+      if (!user) return go('welcome');
+      // Redirection initiale selon le rôle
+      const landing = {
+        admin:         'admin',
+        communication: 'actualites',
+        enseignant:    'classes',
+        chef:          'filiere',
+        etudiant:      'classe',
+      }[user.role] || 'home';
+      return go(landing);
+    }
 
     const pub = IST.authPages[name];
     if (pub) {
@@ -201,7 +212,19 @@
     app.innerHTML = shellHTML(page, name, user);
     const content = document.getElementById('content');
     content.innerHTML = page.render({ user, params });
-    page.mount && page.mount(content, { user, params, refresh: render });
+    page.mount && page.mount(content, {
+      user, params,
+      refresh() { render(); },
+      refreshShell() {
+        // Recalcule la coquille (barre latérale, bottomnav) sans rechanger la page
+        const u2 = auth.current();
+        if (!u2) return;
+        app.innerHTML = shellHTML(page, name, u2);
+        const c2 = document.getElementById('content');
+        c2.innerHTML = page.render({ user: u2, params });
+        page.mount && page.mount(c2, { user: u2, params, refresh() { render(); }, refreshShell() { render(); } });
+      },
+    });
     document.title = `${typeof page.title === 'function' ? page.title(user) : page.title} · Campus+`;
     window.scrollTo(0, 0);
   }

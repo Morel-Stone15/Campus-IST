@@ -398,6 +398,25 @@
         title: `Bienvenue sur Campus+, ${user.prenom} !`,
         body: 'Ton compte est prêt. Découvre ton emploi du temps, les actualités et les services du campus.',
       });
+
+      // Notifier les enseignants de la classe que l'étudiant vient de rejoindre
+      try {
+        const classId = IST.school.classId(user.filiere, user.niveau);
+        if (classId) {
+          const teachers = db.all('posts').length >= 0
+            ? auth.users().filter((u) => (u.classes || []).includes(classId) || u.role === 'chef')
+            : [];
+          teachers.forEach((teacher) => {
+            db.notify({
+              to: teacher.id, type: 'system', icon: 'userPlus',
+              link: 'classes/' + classId,
+              title: `Nouvel étudiant inscrit dans ${classId}`,
+              body: `${user.prenom} ${user.nom} vient de rejoindre votre classe (${user.filiere} · ${user.niveau}).`,
+            });
+          });
+        }
+      } catch (_) { /* ignore enrollment notification errors */ }
+
       return { ok: true, user };
     },
 

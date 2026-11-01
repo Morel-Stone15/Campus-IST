@@ -162,25 +162,38 @@
     });
 
     const f = s.el.querySelector('#doc-add-form');
+    const btn = s.el.querySelector('button[type=submit]');
+
     f.addEventListener('change', (e) => {
       if (e.target.type === 'file') {
         const file = e.target.files[0];
-        f.querySelector('[data-file-name]').textContent = file ? `${file.name} (${ui.sizeLabel(file.size)})` : 'Cliquez pour choisir un fichier…';
+        f.querySelector('[data-file-name]').textContent = file
+          ? `${file.name} (${ui.sizeLabel(file.size)})`
+          : 'Cliquez pour choisir un fichier…';
+        // Effacer l'erreur précédente
+        ui.setErr(f, 'file', '');
       }
     });
 
     f.addEventListener('submit', async (e) => {
       e.preventDefault();
       const d = ui.formData(f);
+
+      // Validations
       ui.setErr(f, 'title', d.title.trim() ? '' : 'Indiquez le titre du document.');
       if (!d.title.trim()) return;
 
       const file = f.querySelector('input[type=file]').files[0];
+      const hasSource = file || (d.url && d.url.trim().startsWith('http'));
+      if (!hasSource) {
+        ui.setErr(f, 'file', 'Joignez un fichier ou entrez un lien de téléchargement.');
+        return;
+      }
       if (file && file.size > MAX_FILE_SIZE) {
-        return ui.setErr(f, 'file', 'Le fichier dépasse la taille maximale autorisée (15 Mo).');
+        ui.setErr(f, 'file', 'Le fichier dépasse la taille maximale autorisée (15 Mo).');
+        return;
       }
 
-      const btn = s.el.querySelector('button[type=submit]');
       ui.busy(btn, true);
 
       let dataUrl = '';
@@ -188,80 +201,95 @@
 
       if (file) {
         try {
-          // 1. Sauvegarder dans IndexedDB
+          // 1. Sauvegarder dans IndexedDB (stockage local fiable)
           fileMeta = await IST.files.save(file, 'doc');
-          // 2. Si le fichier fait moins de 4 Mo, convertir en DataURL pour portabilité multi-appareils
+
+          // 2. Si ≤ 4 Mo → convertir en DataURL pour portabilité multi-appareils
           if (file.size <= 4 * 1024 * 1024) {
             dataUrl = await new Promise((resolve) => {
               const reader = new FileReader();
-              reader.onload = () => resolve(reader.result);
+              reader.onload  = () => resolve(reader.result);
               reader.onerror = () => resolve('');
               reader.readAsDataURL(file);
             });
           }
         } catch (err) {
-          console.warn('Erreur stockage local fichier:', err);
+          console.error('Erreur stockage local fichier:', err);
+          ui.toast('Erreur lors de la sauvegarde locale du fichier.', 'error');
+          ui.busy(btn, false);
+          return;
         }
       }
 
-      const ext = file ? (file.name.split('.').pop() || 'PDF').toUpperCase() : 'PDF';
+      const ext     = file ? (file.name.split('.').pop() || 'PDF').toUpperCase() : 'PDF';
       const sizeStr = file ? ui.sizeLabel(file.size) : (d.url ? 'Lien web' : 'Texte');
 
       const newDoc = {
-        title: d.title.trim(),
-        category: d.category || 'cours',
-        author: d.author.trim() || 'Enseignant',
-        filiere: d.filiere || '*',
-        niveau: d.niveau || '*',
+        title:       d.title.trim(),
+        category:    d.category || 'cours',
+        author:      (d.author || '').trim() || 'Enseignant IST',
+        filiere:     d.filiere || '*',
+        niveau:      d.niveau  || '*',
         description: (d.description || '').trim(),
-        version: d.version || D.fmt(new Date(), { month: 'short', year: 'numeric' }),
-        type: ext,
-        size: sizeStr,
-        fileName: file ? file.name : `${d.title.trim()}.${ext.toLowerCase()}`,
-        fileId: fileMeta ? fileMeta.fileId : null,
-        dataUrl: dataUrl,
-        url: (d.url || '').trim(),
-        updated: D.iso(new Date()),
-        uploadedBy: u.id || 'staff',
+        version:     d.version || D.fmt(new Date(), { month: 'short', year: 'numeric' }),
+        type:        ext,
+        size:        sizeStr,
+        fileName:    file ? file.name : `${d.title.trim()}.${ext.toLowerCase()}`,
+        fileId:      fileMeta ? fileMeta.fileId : null,
+        dataUrl,
+        url:         (d.url || '').trim(),
+        updated:     D.iso(new Date()),
+        uploadedBy:  u.id || 'staff',
       };
 
-      // Si l'API est accessible, téléverser également sur le serveur
-      if (file && window.IST.api && window.IST.api.getToken() && location.protocol !== 'file:') {
-        try {
-          const form = new FormData();
-          form.append('file', file);
-          form.append('title', newDoc.title);
-          form.append('description', newDoc.description);
-          form.append('is_public', 'true');
-          const token = window.IST.api.getToken();
-          const apiRes = await fetch(`${window.IST.api.base}/documents/`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: form
-          });
-          if (apiRes.ok) {
-            const apiData = await apiRes.json();
-            if (apiData.data && apiData.data.id) {
-              newDoc.apiId = apiData.data.id;
+      // Upload serveur en arrière-plan (non bloquant)
+      if (file && window.IST.api && window.IST.api.getToken && window.IST.api.getToken() && location.protocol !== 'file:') {
+        (async () => {
+          try {
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('title', newDoc.title);
+            fd.append('description', newDoc.description);
+            fd.append('is_public', 'true');
+            const token  = window.IST.api.getToken();
+            const apiRes = await fetch(`${window.IST.api.base}/documents/`, {
+              method:  'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body:    fd,
+            });
+            if (apiRes.ok) {
+              const apiData = await apiRes.json();
+              if (apiData.data && apiData.data.id) {
+                // Mettre à jour l'entrée locale avec l'ID API
+                const docs = IST.db.all('documents');
+                const idx  = docs.findIndex((x) => x.fileId === newDoc.fileId);
+                if (idx >= 0) { docs[idx].apiId = apiData.data.id; IST.db.save('documents', docs); }
+              }
             }
+          } catch (err) {
+            console.warn('Upload serveur (arrière-plan) :', err);
           }
-        } catch (err) {
-          console.warn('Upload API background:', err);
-        }
+        })();
       }
 
-      db.add('documents', newDoc);
+      // Enregistrement local immédiat
+      const added = db.add('documents', newDoc);
+      if (!added) {
+        ui.toast("Impossible d'enregistrer le document (stockage plein ?).", 'error');
+        ui.busy(btn, false);
+        return;
+      }
 
       // Notification pour les étudiants concernés
-      if (d.notify) {
+      if (d.notify !== false) {
         db.notify({
-          type: 'annonce',
-          icon: 'file',
-          title: `Nouveau document : ${newDoc.title}`,
-          body: `Publié par ${newDoc.author} (${newDoc.category === 'cours' ? 'Support de cours' : 'Document officiel'}). Disponible au téléchargement.`,
-          link: 'documents',
+          type:   'annonce',
+          icon:   'file',
+          title:  `Nouveau document : ${newDoc.title}`,
+          body:   `Publié par ${newDoc.author}. Disponible au téléchargement dans Documents & Cours.`,
+          link:   'documents',
           filiere: newDoc.filiere,
-          niveau: newDoc.niveau,
+          niveau:  newDoc.niveau,
         });
       }
 
@@ -269,7 +297,7 @@
       s.close();
       ui.toast(`Document « ${newDoc.title} » publié avec succès !`, 'success');
       ctx.refresh();
-    };
+    });
   }
 
   IST.pages.documents = {
