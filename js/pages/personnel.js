@@ -78,6 +78,7 @@
   IST.pages.annuaire = {
     title: 'Personnel de l’IST',
     subtitle: 'Enseignants et administration',
+    can: (u) => u.role !== 'etudiant',
     render() {
       const all = members();
       const counts = {

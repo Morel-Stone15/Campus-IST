@@ -33,7 +33,7 @@
       : '';
 
     const s = ui.sheet({
-      title: 'Détails de l'événement',
+      title: "Détails de l'événement",
       body: `<div class="tone-${tone}">
         <div class="event-hero">${icon(ui.EVENT_ICONS[ev.category] || 'calendar')}<span class="tag">${ui.esc(ev.category)} · ${ev.type === 'externe' ? 'Externe' : 'Interne'}</span><h2>${ui.esc(ev.title)}</h2></div>
         <div class="detail-rows">
@@ -249,6 +249,7 @@
   IST.pages.agenda = {
     title: 'Agenda étudiant',
     subtitle: 'Activités étudiantes et agenda personnel',
+    can: (u) => u.role === 'etudiant',
     render({ user }) {
       return `<div class="page-tabs">${ui.seg([['activites', 'Activités étudiantes'], ['perso', 'Mon agenda']], st.tab, 'tab')}</div>
         ${st.tab === 'activites' ? activities(user) : myAgenda(user)}`;

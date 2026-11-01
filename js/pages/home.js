@@ -3,16 +3,15 @@
   const { ui, db, date: D } = IST;
   const icon = IST.icon;
 
-  const QUICK = [
-    ['academique', 'Vie académique', 'book', 'blue'],
-    ['annuaire', 'Personnel de l’IST', 'briefcase', 'purple'],
-    ['documents', 'Documents officiels', 'file', 'green'],
-    ['identite', "Identité de l'IST", 'music', 'purple'],
-    ['agenda', 'Agenda étudiant', 'calendar', 'blue'],
+  const STUDENT_QUICK = [
+    ['classe', 'Ma classe & Devoirs', 'users', 'blue'],
+    ['academique', 'Emploi du temps', 'book', 'green'],
+    ['documents', 'Cours & Devoirs', 'file', 'teal'],
+    ['agenda', 'Agenda étudiant', 'calendar', 'purple'],
+    ['actualites', 'Actualités & Annonces', 'newspaper', 'orange'],
     ['services', 'Services du campus', 'pin', 'green'],
-    ['plan', "Plans de l'université", 'map', 'teal'],
-    ['actualites', 'Actualités', 'newspaper', 'orange'],
-    ['notifications', 'Notifications', 'bell', 'red'],
+    ['plan', "Plan de l'université", 'map', 'teal'],
+    ['identite', "Identité de l'IST", 'music', 'purple'],
   ];
 
   function nextCourseCard(next) {
@@ -100,14 +99,19 @@
 
     const tiles = [
       isAdmin && ['admin', 'Administration', 'shield', 'red'],
-      isCom && ['actualites', 'Communication', 'newspaper', 'orange'],
-      isCom && ['agenda', 'Événements', 'calendar', 'purple'],
-      isTeacher && ['documents', 'Déposer un cours', 'file', 'teal'],
+      isAdmin && ['academique', 'Planning global', 'book', 'blue'],
+      isCom && ['actualites', 'Gestion Annonces', 'newspaper', 'orange'],
+      isCom && ['documents', 'Documents officiels', 'file', 'teal'],
+      isCom && ['identite', 'Identité & Hymne', 'music', 'purple'],
       isTeacher && classes.length && ['classes', 'Mes classes', 'users', 'blue'],
+      isTeacher && ['documents', 'Déposer un cours', 'file', 'teal'],
       isTeacher && classes.length && ['academique', 'Mon emploi du temps', 'calendar', 'green'],
       chef && ['filiere', 'Espace chef de filière', 'layers', 'purple'],
+      chef && classes.length && ['classes', 'Mes classes', 'users', 'blue'],
+      user.role === 'personnel' && ['services', 'Services du campus', 'pin', 'green'],
+      user.role === 'personnel' && ['annuaire', 'Personnel de l’IST', 'briefcase', 'purple'],
+      user.role === 'personnel' && ['documents', 'Documents & Guides', 'file', 'teal'],
       ['annuaire', 'Personnel de l’IST', 'briefcase', 'purple'],
-      ['documents', 'Documents officiels', 'file', 'teal'],
       ['plan', "Plan de l'université", 'map', 'teal'],
       ['notifications', 'Notifications', 'bell', 'red'],
     ].filter(Boolean);
@@ -197,7 +201,7 @@
           <section class="section">
             <div class="section-head"><h2>Accès rapide</h2></div>
             <div class="quick-grid">
-              ${QUICK.map(([id, label, ic, tone]) => `<a class="tile" href="#/${id}"><span class="ic-box tone-${tone}">${icon(ic)}</span><span>${label}</span></a>`).join('')}
+              ${STUDENT_QUICK.map(([id, label, ic, tone]) => `<a class="tile" href="#/${id}"><span class="ic-box tone-${tone}">${icon(ic)}</span><span>${label}</span></a>`).join('')}
             </div>
           </section>
 

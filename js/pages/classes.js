@@ -448,7 +448,7 @@
   IST.pages.classes = {
     title: 'Mes classes',
     subtitle: 'Classes virtuelles : publications, devoirs et rendus étudiants',
-    can: (u) => db.isStaff(u),
+    can: (u) => u.role === 'enseignant' || u.role === 'chef' || (u.classes && u.classes.length > 0) || u.role === 'admin',
     render(ctx) {
       const u = ctx.user;
       const id = ctx.params[0];

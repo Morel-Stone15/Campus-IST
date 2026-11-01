@@ -64,20 +64,22 @@
     }
   };
 
-  const teaches = (u) => Boolean(u && (u.role === 'enseignant' || (u.classes || []).length > 0));
+  const teaches = (u) => Boolean(u && (u.role === 'enseignant' || u.role === 'chef' || (u.classes || []).length > 0));
+
   const NAV = [
-    { id: 'home', label: 'Accueil', icon: 'home' },
+    { id: 'admin', label: 'Administration', icon: 'shield', show: (u) => u.role === 'admin' },
+    { id: 'home', label: 'Accueil', icon: 'home', show: (u) => u.role !== 'admin' },
     { id: 'classe', label: 'Ma classe', icon: 'users', show: (u) => u.role === 'etudiant' },
-    { id: 'classes', label: 'Mes classes & Cours', icon: 'users', show: teaches },
+    { id: 'classes', label: 'Mes classes & Cours', icon: 'users', show: (u) => teaches(u) },
     { id: 'filiere', label: 'Espace chef de filière', icon: 'layers', show: (u) => u.role === 'chef' },
-    { id: 'academique', label: 'Vie académique', icon: 'book' },
+    { id: 'academique', label: 'Vie académique & Planning', icon: 'book', show: (u) => ['etudiant', 'enseignant', 'chef', 'admin'].includes(u.role) },
     { id: 'documents', label: 'Documents & Cours', icon: 'file' },
-    { id: 'agenda', label: 'Agenda étudiant', icon: 'calendar' },
+    { id: 'agenda', label: 'Agenda étudiant', icon: 'calendar', show: (u) => u.role === 'etudiant' },
     { id: 'actualites', label: 'Actualités & Annonces', icon: 'newspaper' },
-    { id: 'annuaire', label: 'Personnel de l’IST', icon: 'briefcase' },
-    { id: 'services', label: 'Services du campus', icon: 'pin' },
+    { id: 'annuaire', label: 'Personnel & Contacts', icon: 'briefcase', show: (u) => u.role !== 'etudiant' },
+    { id: 'services', label: 'Services du campus', icon: 'pin', show: (u) => ['etudiant', 'personnel', 'communication', 'admin'].includes(u.role) },
     { id: 'plan', label: "Plan de l'université", icon: 'map' },
-    { id: 'identite', label: "Identité de l'IST", icon: 'music' },
+    { id: 'identite', label: "Identité de l'IST", icon: 'music', show: (u) => ['etudiant', 'communication', 'admin'].includes(u.role) },
   ];
   const NAV_ACCOUNT = [
     { id: 'notifications', label: 'Notifications', icon: 'bell' },
@@ -85,17 +87,57 @@
   ];
 
   function bottomItems(u) {
-    let second = { id: 'classe', label: 'Ma classe', icon: 'users' };
-    if (u.role === 'admin') second = { id: 'admin', label: 'Admin', icon: 'shield' };
-    else if (u.role === 'communication') second = { id: 'actualites', label: 'Com', icon: 'newspaper' };
-    else if (u.role === 'chef') second = { id: 'filiere', label: 'Filière', icon: 'layers' };
-    else if (teaches(u) || u.role === 'enseignant') second = { id: 'classes', label: 'Classes', icon: 'users' };
-
+    if (u.role === 'admin') {
+      return [
+        { id: 'admin', label: 'Admin', icon: 'shield' },
+        { id: 'actualites', label: 'Actualités', icon: 'newspaper' },
+        { id: 'documents', label: 'Documents', icon: 'file' },
+        { id: 'annuaire', label: 'Personnel', icon: 'briefcase' },
+        { id: 'profil', label: 'Profil', icon: 'user' },
+      ];
+    }
+    if (u.role === 'communication') {
+      return [
+        { id: 'actualites', label: 'Actualités', icon: 'newspaper' },
+        { id: 'documents', label: 'Documents', icon: 'file' },
+        { id: 'services', label: 'Services', icon: 'pin' },
+        { id: 'annuaire', label: 'Personnel', icon: 'briefcase' },
+        { id: 'profil', label: 'Profil', icon: 'user' },
+      ];
+    }
+    if (u.role === 'enseignant') {
+      return [
+        { id: 'home', label: 'Accueil', icon: 'home' },
+        { id: 'classes', label: 'Classes', icon: 'users' },
+        { id: 'documents', label: 'Cours', icon: 'file' },
+        { id: 'academique', label: 'Planning', icon: 'book' },
+        { id: 'profil', label: 'Profil', icon: 'user' },
+      ];
+    }
+    if (u.role === 'chef') {
+      return [
+        { id: 'home', label: 'Accueil', icon: 'home' },
+        { id: 'filiere', label: 'Filière', icon: 'layers' },
+        { id: 'classes', label: 'Classes', icon: 'users' },
+        { id: 'academique', label: 'Planning', icon: 'book' },
+        { id: 'profil', label: 'Profil', icon: 'user' },
+      ];
+    }
+    if (u.role === 'personnel') {
+      return [
+        { id: 'home', label: 'Accueil', icon: 'home' },
+        { id: 'services', label: 'Services', icon: 'pin' },
+        { id: 'annuaire', label: 'Personnel', icon: 'briefcase' },
+        { id: 'documents', label: 'Documents', icon: 'file' },
+        { id: 'profil', label: 'Profil', icon: 'user' },
+      ];
+    }
+    // Rôle étudiant par défaut
     return [
       { id: 'home', label: 'Accueil', icon: 'home' },
-      second,
+      { id: 'classe', label: 'Ma classe', icon: 'users' },
       { id: 'documents', label: 'Cours', icon: 'file' },
-      { id: 'actualites', label: 'Actualités', icon: 'newspaper' },
+      { id: 'academique', label: 'Planning', icon: 'book' },
       { id: 'profil', label: 'Profil', icon: 'user' },
     ];
   }
@@ -116,7 +158,6 @@
   function shellHTML(page, name, user) {
     const unread = db.unread(user);
     const isHome = name === 'home';
-    const admin = user.role === 'admin' ? [{ id: 'admin', label: 'Administration', icon: 'shield' }] : [];
     const sub = isHome ? D.long(new Date()) : (typeof page.subtitle === 'function' ? page.subtitle(user) : page.subtitle) || cfg.schoolName;
     const title = typeof page.title === 'function' ? page.title(user) : page.title;
 
@@ -144,7 +185,7 @@
         <nav class="nav">
           ${NAV.filter((n) => !n.show || n.show(user)).map((n) => navLink(n, name)).join('')}
           <p class="nav-label">Mon compte</p>
-          ${[...NAV_ACCOUNT, ...admin].map((n) => navLink(n, name, unread)).join('')}
+          ${NAV_ACCOUNT.map((n) => navLink(n, name, unread)).join('')}
         </nav>
         <div class="side-user">
           ${ui.avatar(user, 40)}
@@ -181,22 +222,23 @@
     const { name, params } = parse();
     const user = auth.current();
 
+    const landing = {
+      admin:         'admin',
+      communication: 'actualites',
+      enseignant:    'classes',
+      chef:          'filiere',
+      personnel:     'services',
+      etudiant:      'classe',
+    }[user ? user.role : ''] || 'home';
+
     if (!name) {
       if (!user) return go('welcome');
-      // Redirection initiale selon le rôle
-      const landing = {
-        admin:         'admin',
-        communication: 'actualites',
-        enseignant:    'classes',
-        chef:          'filiere',
-        etudiant:      'classe',
-      }[user.role] || 'home';
       return go(landing);
     }
 
     const pub = IST.authPages[name];
     if (pub) {
-      if (user) return go('home');
+      if (user) return go(landing);
       if (pub.guard && !pub.guard()) return go(pub.fallback);
       app.innerHTML = pub.render();
       pub.mount && pub.mount(app);
@@ -207,7 +249,9 @@
 
     if (!user) return go('welcome');
     const page = IST.pages[name];
-    if (!page || (page.admin && user.role !== 'admin') || (page.can && !page.can(user))) return go('home');
+    const navItem = NAV.find((n) => n.id === name);
+    const isAllowed = Boolean(page && (!page.admin || user.role === 'admin') && (!page.can || page.can(user)) && (!navItem || !navItem.show || navItem.show(user)));
+    if (!isAllowed) return go(landing);
 
     app.innerHTML = shellHTML(page, name, user);
     const content = document.getElementById('content');

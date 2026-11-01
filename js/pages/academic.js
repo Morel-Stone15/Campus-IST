@@ -226,6 +226,7 @@
   IST.pages.academique = {
     title: 'Vie académique',
     subtitle: 'Emploi du temps, examens et plan annuel des matières',
+    can: (u) => ['etudiant', 'enseignant', 'chef', 'admin'].includes(u.role),
     render({ user }) {
       if (!st.date) st.date = initialDate();
       const tabs = [
